@@ -4,156 +4,249 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tenancy Agreement Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #agreement-list div {
+            margin-bottom: 1rem;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 font-sans">
-    <div class="container mx-auto p-4">
-        <h1 class="text-3xl font-bold mb-4 text-center">Tenancy Agreement Generator</h1>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-4xl mx-auto bg-white p-8 rounded shadow">
+        <h1 class="text-2xl font-bold mb-4">Tenancy Agreement Generator</h1>
+        
+        <!-- PDF Upload -->
         <div class="mb-4">
-            <label for="jsonFile" class="block text-lg font-medium mb-2">Upload JSON File:</label>
-            <input type="file" id="jsonFile" accept=".json" class="border p-2 rounded w-full">
+            <label class="block text-sm font-medium text-gray-700">Upload PDF</label>
+            <input type="file" id="pdfUpload" accept=".pdf" class="mt-1 block w-full">
         </div>
-        <div id="agreements" class="space-y-4"></div>
+
+        <!-- Parsed Data Display -->
+        <div id="parsedData" class="mb-4 hidden">
+            <h2 class="text-lg font-semibold">Parsed Fields and Owners</h2>
+            <div id="fieldsDisplay"></div>
+        </div>
+
+        <!-- Tenant Information -->
+        <div class="mb-4">
+            <h2 class="text-lg font-semibold">Tenant Information</h2>
+            <input type="text" id="tenantName" placeholder="Tenant Name" class="mt-1 block w-full border rounded p-2">
+            <input type="text" id="tenantFather" placeholder="Father's Name" class="mt-1 block w-full border rounded p-2">
+            <input type="text" id="tenantAddress" placeholder="Address" class="mt-1 block w-full border rounded p-2">
+            <input type="text" id="tenantTIN" placeholder="TIN" class="mt-1 block w-full border rounded p-2">
+            <input type="text" id="tenantDOY" placeholder="Tax Office (DOY)" class="mt-1 block w-full border rounded p-2">
+        </div>
+
+        <!-- Agreement Details -->
+        <div class="mb-4">
+            <h2 class="text-lg font-semibold">Agreement Details</h2>
+            <input type="date" id="startDate" class="mt-1 block w-full border rounded p-2">
+            <input type="date" id="endDate" class="mt-1 block w-full border rounded p-2">
+            <input type="text" id="rentAmount" placeholder="Rent Amount per Hectare (€/Ha)" class="mt-1 block w-full border rounded p-2">
+        </div>
+
+        <button onclick="generateAgreements()" class="bg-green-500 text-white p-2 rounded" disabled id="generateButton">Generate Agreements</button>
+
+        <!-- Agreement List -->
+        <div id="agreement-list" class="mt-4"></div>
     </div>
 
     <script>
-        // Template for the agreement in LaTeX format
-        const agreementTemplate = (landlord, tenant, fields, rentalFee) => `
-\\documentclass[a4paper,12pt]{article}
-\\usepackage[utf8]{inputenc}
-\\usepackage[greek]{babel}
-\\usepackage{geometry}
-\\geometry{a4paper, margin=1in}
-\\usepackage{parskip}
-\\begin{document}
+        // Initialize pdf.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-\\textbf{ΙΔΙΩΤΙΚΟ ΣΥΜΦΩΝΗΤΙΚΟ ΑΓΡΟΜΙΣΘΩΣΗΣ}
+        let fields = [];
 
-Σήμερα την 1η Νοεμβρίου 2024 στο Δημητρίτσι οι υπογράφοντες το συμφωνητικό αυτό
+        async function processPDF() {
+            const fileInput = document.getElementById('pdfUpload');
+            if (!fileInput.files.length) return;
 
-αφενός ο/η ${landlord.name} του ${landlord.fatherName}, κάτοικος ${landlord.address}, οδός ${landlord.street} αρ. ${landlord.streetNumber}, Α.Φ.Μ ${landlord.tin}, Δ.Ο.Υ ${landlord.taxOffice}
+            const file = fileInput.files[0];
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            let text = '';
 
-και αφετέρου ο/η ${tenant.name} του ${tenant.fatherName}, επαγγέλματος αγρότης, κάτοικος ${tenant.address}, οδός ${tenant.street} αρ. ${tenant.streetNumber}, Α.Φ.Μ ${tenant.tin}, Δ.Ο.Υ Α Σερρών
+            // Extract text from all pages
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                text += textContent.items.map(item => item.str).join(' ') + '\n';
+            }
 
-συμφώνησαν από κοινού και αποδέχτηκαν τα εξής:
+            // Parse PDF text to extract fields and owners
+            fields = [];
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+            let currentField = null;
 
-\\textbf{1. ΜΙΣΘΙΟ.} Ο πρώτος συμβαλλόμενος ("εκμισθωτής") έχει στην αποκλειστική κυριότητα, νομή και κατοχή του τους κάτωθι αγρούς:
+            for (let line of lines) {
+                // Match field data (assuming format like: "1. 1 COMMUNITY LOCATION ATAK KTM MAP AREA")
+                const fieldMatch = line.match(/^(\d+)\.\s*(\d+)\s*(\S+)\s*(\S+)\s*(\S+)\s*(\S+)\s*(\S+)\s*([\d.]+)/);
+                if (fieldMatch) {
+                    if (currentField) fields.push(currentField);
+                    currentField = {
+                        community: fieldMatch[3],
+                        location: fieldMatch[4],
+                        atak: fieldMatch[5],
+                        ktm: fieldMatch[6],
+                        map: fieldMatch[7],
+                        area: parseFloat(fieldMatch[8]) || 0,
+                        owners: []
+                    };
+                }
+                // Match owner data (assuming format like: "Owner NAME FATHER ADDRESS TIN DOY")
+                const ownerMatch = line.match(/Owner\s+(.+?)\s+του\s+(.+?),\s+κάτοικος\s+(.+?),\s+Α\.Φ\.Μ\s+(\S+),\s+Δ\.Ο\.Υ\s+(.+)/);
+                if (ownerMatch && currentField) {
+                    currentField.owners.push({
+                        name: ownerMatch[1],
+                        father: ownerMatch[2],
+                        address: ownerMatch[3],
+                        tin: ownerMatch[4],
+                        doy: ownerMatch[5]
+                    });
+                }
+            }
+            if (currentField) fields.push(currentField);
 
-\\begin{tabular}{|c|l|l|l|l|l|}
-\\hline
-Α/Α & ΚΟΙΝΟΤΗΤΑ (κωδ.) & ΤΟΠΟΘΕΣΙΑ & Α.Τ.Α.Κ. & ΑΡ.ΚΤΗΜ.ΤΕΜ. & ΕΚΤΑΣΗ (Ha) \\\\
-\\hline
-${fields.map((field, index) => `${index + 1}. ${field.communityCode} & ${field.location} & ${field.atak} & ${field.plotNumber} & ${field.areaHa}`).join(' \\\\ \\hline\n')}
-\\hline
-\\end{tabular}
+            // Display parsed data
+            const parsedDataDiv = document.getElementById('parsedData');
+            const fieldsDisplay = document.getElementById('fieldsDisplay');
+            parsedDataDiv.classList.remove('hidden');
+            fieldsDisplay.innerHTML = '';
 
-Ο εκμισθωτής εκμισθώνει με το παρόν συμφωνητικό στο μισθωτή τους παραπάνω αγρούς, με τους εξής όρους και συμφωνίες που είναι όλοι ουσιώδεις:
+            fields.forEach((field, i) => {
+                const fieldDiv = document.createElement('div');
+                fieldDiv.className = 'mb-4 p-4 border rounded';
+                fieldDiv.innerHTML = `
+                    <h3 class="font-semibold">Field ${i + 1}</h3>
+                    <p>Community: ${field.community}</p>
+                    <p>Location: ${field.location}</p>
+                    <p>ATAK: ${field.atak}</p>
+                    <p>KTM: ${field.ktm}</p>
+                    <p>Cartographic Code: ${field.map}</p>
+                    <p>Area: ${field.area} Ha</p>
+                    <h4 class="font-medium mt-2">Owners:</h4>
+                    ${field.owners.map((owner, j) => `
+                        <div class="ml-4">
+                            <p>Owner ${j + 1}: ${owner.name}</p>
+                            <p>Father: ${owner.father}</p>
+                            <p>Address: ${owner.address}</p>
+                            <p>TIN: ${owner.tin}</p>
+                            <p>DOY: ${owner.doy}</p>
+                        </div>
+                    `).join('')}
+                `;
+                fieldsDisplay.appendChild(fieldDiv);
+            });
 
-\\textbf{2. ΔΙΑΡΚΕΙΑ.} Η διάρκεια της παρούσας μίσθωσης ορίζεται: Αρχίζει την 1η ΝΟΕΜΒΡΙΟΥ 2024 και λήγει την 31η ΟΚΤΩΒΡΙΟΥ 2032.
+            // Enable generate button
+            document.getElementById('generateButton').disabled = fields.length === 0;
+        }
 
-\\textbf{3. ΜΙΣΘΩΜΑ.} Το ετήσιο μίσθωμα ορίζεται σε ευρώ ${rentalFee}/ΣΤΡ
+        function generateAgreements() {
+            if (!fields.length) {
+                alert('No fields data available. Please upload a PDF first.');
+                return;
+            }
 
-\\textbf{4. ΧΡΗΣΗ.} Ο μίσθιος αγρός θα χρησιμοποιηθεί αποκλειστικά για αγροτική καλλιέργεια. Απαγορεύεται απόλυτα οποιαδήποτε μετατροπή της χρήσης ή του τρόπου εκμετάλλευσης του μισθίου, η ολική ή μερική υπομίσθωσή του, ή η με οποιοδήποτε τρόπο, με ή χωρίς αντάλλαγμα παραχώρηση της χρήσης του μισθίου σε τρίτους καθώς και η πρόσληψη συνεταίρου, χωρίς την προηγούμενη έγγραφη συναίνεση του εκμισθωτή.
+            const tenant = {
+                name: document.getElementById('tenantName').value,
+                father: document.getElementById('tenantFather').value,
+                address: document.getElementById('tenantAddress').value,
+                tin: document.getElementById('tenantTIN').value,
+                doy: document.getElementById('tenantDOY').value
+            };
 
-\\textbf{5. ΚΑΛΗ ΧΡΗΣΗ ΤΟΥ ΜΙΣΘΙΟΥ.} Ο μισθωτής υποχρεούται να κάνει καλή χρήση του μισθίου, να το εκμεταλλεύεται με επιμέλεια και σύμφωνα με τον προορισμό του και να το διατηρεί κατάλληλο για τη συμφωνημένη χρήση, κάνοντας με αποκλειστική δαπάνη και επιμέλειά του κάθε είδους τακτικές ή έκτακτες επισκευές ή βελτιώσεις, διαφορετικά, ευθύνεται για αποζημίωση για τις φθορές και τις βλάβες που προξενήθησαν σ' αυτό.
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const rentAmount = document.getElementById('rentAmount').value;
 
-Το παρόν μισθωτήριο διαβάστηκε και έγινε αποδεκτό από τους συμβαλλομένους, υπογράφη από αυτούς και ο καθένας έλαβε από ένα όμοιο αντίτυπο.
-
-\\vspace{1cm}
-
-\\begin{center}
-\\textbf{ΟΙ ΣΥΜΒΑΛΛΟΜΕΝΟΙ}
-\\end{center}
-
-\\begin{tabular}{p{5cm} p{5cm} p{5cm}}
-\\textbf{Ο ΕΚΜΙΣΘΩΤΗΣ} & \\textbf{ΘΕΩΡΗΘΗΚΕ} & \\textbf{Ο ΜΙΣΘΩΤΗΣ} \\\\
-${landlord.name} & & ${tenant.name} \\\\
-\\end{tabular}
-
-\\vspace{1cm}
-
-Για το γνήσιο των υπογραφών
-
-\\vspace{0.5cm}
-
-ΗΜΕΡΟΜΗΝΙΑ
-
-\\end{document}
-`;
-
-        // Function to process JSON and generate agreements
-        function processJsonData(data) {
-            const tenant = data.tenant;
-            const fields = data.fields;
-            const rentalFee = data.rentalFee || "500"; // Default rental fee if not provided
-
-            // Group fields by owner TIN
-            const ownerFields = {};
-            fields.forEach(field => {
+            // Merge agreements by TIN
+            const agreementsByTIN = {};
+            fields.forEach((field, index) => {
                 field.owners.forEach(owner => {
-                    if (!ownerFields[owner.tin]) {
-                        ownerFields[owner.tin] = {
+                    if (!agreementsByTIN[owner.tin]) {
+                        agreementsByTIN[owner.tin] = {
                             owner: owner,
                             fields: []
                         };
                     }
-                    ownerFields[owner.tin].fields.push({
-                        communityCode: field.communityCode,
-                        location: field.location,
-                        atak: field.atak,
-                        plotNumber: field.plotNumber,
-                        areaHa: field.areaHa
-                    });
+                    agreementsByTIN[owner.tin].fields.push({ ...field, index: index + 1 });
                 });
             });
 
             // Generate agreements
-            const agreementsDiv = document.getElementById('agreements');
-            agreementsDiv.innerHTML = '';
-            Object.values(ownerFields).forEach(({ owner, fields }, index) => {
-                const agreement = agreementTemplate(owner, tenant, fields, rentalFee);
-                
-                // Create download button
+            const agreementList = document.getElementById('agreement-list');
+            agreementList.innerHTML = '';
+
+            Object.keys(agreementsByTIN).forEach(tin => {
+                const agreement = agreementsByTIN[tin];
+                const doc = new jspdf.jsPDF();
+                doc.setFontSize(12);
+
+                // Generating agreement content
+                doc.text('ΙΔΙΩΤΙΚΟ ΣΥΜΦΩΝΗΤΙΚΟ ΑΓΡΟΜΙΣΘΩΣΗΣ', 20, 20);
+                doc.text(`Σήμερα την ${new Date(startDate).toLocaleDateString('el-GR')} στο Δημητρίτσι οι υπογράφοντες το συμφωνητικό αυτό`, 20, 30);
+                doc.text(`αφενός ο/η ${agreement.owner.name} του ${agreement.owner.father}, κάτοικος ${agreement.owner.address},`, 20, 40);
+                doc.text(`Α.Φ.Μ ${agreement.owner.tin}, Δ.Ο.Υ ${agreement.owner.doy}`, 20, 50);
+                doc.text(`και αφετέρου ο/η ${tenant.name} του ${tenant.father}, επαγγέλματος αγρότης,`, 20, 60);
+                doc.text(`κάτοικος ${tenant.address}, Α.Φ.Μ ${tenant.tin}, Δ.Ο.Υ ${tenant.doy}`, 20, 70);
+                doc.text('συμφώνησαν από κοινού και αποδέχτηκαν τα εξής:', 20, 80);
+
+                doc.text('1. ΜΙΣΘΙΟ. Ο πρώτος συμβαλλόμενος ("εκμισθωτής") έχει στην αποκλειστική κυριότητα, νομή και κατοχή του τους κάτωθι αγρούς:', 20, 90);
+                let y = 100;
+                doc.text('Α/Α  ΚΟΙΝΟΤΗΤΑ  ΤΟΠΟΘΕΣΙΑ  Α.Τ.Α.Κ.  ΑΡ.ΚΤΗΜ.ΤΕΜ.  ΧΑΡΤΟΓΡΑΦΙΚΟ  ΕΚΤΑΣΗ (Ha)', 20, y);
+                y += 10;
+
+                agreement.fields.forEach(field => {
+                    doc.text(`${field.index}. ${field.community}  ${field.location}  ${field.atak}  ${field.ktm}  ${field.map}  ${field.area}`, 20, y);
+                    y += 10;
+                });
+
+                y += 10;
+                doc.text('Ο εκμισθωτής εκμισθώνει με το παρόν συμφωνητικό στο μισθωτή τους παραπάνω αγρούς, με τους εξής όρους και συμφωνίες που είναι όλοι ουσιώδεις:', 20, y);
+                y += 10;
+                doc.text(`2. ΔΙΑΡΚΕΙΑ. Η διάρκεια της παρούσας μίσθωσης ορίζεται: Αρχίζει την ${new Date(startDate).toLocaleDateString('el-GR')} και λήγει την ${new Date(endDate).toLocaleDateString('el-GR')}.`, 20, y);
+                y += 10;
+                doc.text(`3. ΜΙΣΘΩΜΑ. Το ετήσιο μίσθωμα ορίζεται σε ευρώ ${rentAmount}/Ha`, 20, y);
+                y += 10;
+                doc.text('4. ΧΡΗΣΗ. Ο μίσθιος αγρός θα χρησιμοποιηθεί αποκλειστικά για αγροτική καλλιέργεια. Απαγορεύεται απόλυτα οποιαδήποτε μετατροπή της χρήσης ή του τρόπου εκμετάλλευσης του μισθίου, η ολική ή μερική υπομίσθωσή του, ή η με οποιοδήποτε τρόπο, με ή χωρίς αντάλλαγμα παραχώρηση της χρήσης του μισθίου σε τρίτους καθώς και η πρόσληψη συνεταίρου, χωρίς την προηγούμενη έγγραφη συναίνεση του εκμισθωτή.', 20, y, { maxWidth: 170 });
+                y += 40;
+                doc.text('5. ΚΑΛΗ ΧΡΗΣΗ ΤΟΥ ΜΙΣΘΙΟΥ. Ο μισθωτής υποχρεούται να κάνει καλή χρήση του μισθίου, να το εκμεταλλεύεται με επιμέλεια και σύμφωνα με τον προορισμό του και να το διατηρεί κατάλληλο για τη συμφωνημένη χρήση, κάνοντας με αποκλειστική δαπάνη και επιμέλειά του κάθε είδους τακτικές ή έκτακτες επισκευές ή βελτιώσεις, διαφορετικά, ευθύνεται για αποζημίωση για τις φθορές και τις βλάβες που προξενήθησαν σ\' αυτό.', 20, y, { maxWidth: 170 });
+                y += 40;
+                doc.text('Το παρόν μισθωτήριο διαβάστηκε και έγινε αποδεκτό από τους συμβαλλομένους, υπογράφη από αυτούς και ο καθένας έλαβε από ένα όμοιο αντίτυπο.', 20, y, { maxWidth: 170 });
+                y += 20;
+                doc.text('ΟΙ ΣΥΜΒΑΛΛΟΜΕΝΟΙ', 20, y);
+                y += 10;
+                doc.text('Ο ΕΚΜΙΣΘΩΤΗΣ _________________ ΘΕΩΡΗΘΗΚΕ _________________ Ο ΜΙΣΘΩΤΗΣ', 20, y);
+                y += 10;
+                doc.text('Για το γνήσιο των υπογραφών', 20, y);
+                y += 10;
+                doc.text('ΗΜΕΡΟΜΗΝΙΑ _________________', 20, y);
+
                 const agreementDiv = document.createElement('div');
-                agreementDiv.className = 'bg-white p-4 rounded shadow';
                 agreementDiv.innerHTML = `
-                    <h2 class="text-xl font-semibold mb-2">Agreement for ${owner.name} (TIN: ${owner.tin})</h2>
-                    <pre class="bg-gray-100 p-2 rounded mb-2 overflow-auto">${agreement}</pre>
-                    <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" onclick="downloadAgreement('${owner.tin}', \`${agreement}\`)">Download Agreement</button>
+                    <p>Agreement for ${agreement.owner.name} (TIN: ${tin})</p>
+                    <button class="bg-blue-500 text-white p-2 rounded" onclick="downloadPDF('${tin}')">Download PDF</button>
                 `;
-                agreementsDiv.appendChild(agreementDiv);
+                agreementList.appendChild(agreementDiv);
+
+                // Store PDF for download
+                window['pdf_' + tin] = doc;
             });
         }
 
-        // Function to download agreement as .tex file
-        function downloadAgreement(tin, content) {
-            const blob = new Blob([content], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `agreement_${tin}.tex`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+        function downloadPDF(tin) {
+            const doc = window['pdf_' + tin];
+            doc.save(`agreement_${tin}.pdf`);
         }
 
-        // Handle file upload
-        document.getElementById('jsonFile').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const data = JSON.parse(e.target.result);
-                        processJsonData(data);
-                    } catch (error) {
-                        alert('Error parsing JSON file: ' + error.message);
-                    }
-                };
-                reader.readAsText(file);
-            }
-        });
+        // Handle PDF upload
+        document.getElementById('pdfUpload').addEventListener('change', processPDF);
     </script>
 </body>
 </html>
