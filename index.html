@@ -70,48 +70,51 @@
             let currentField = null;
 
             for (let line of lines) {
-                // Match field data (e.g., "1. 1 COMMUNITY LOCATION ATAK KTM MAP AREA")
-                const fieldMatch = line.match(/^(\d+)\.\s*(\d+)\s*(\S+)\s*(\S+)\s*(\S+)\s*(\S+)\s*(\S+)\s*([\d.]+)/);
+                // Match field data (e.g., "1. COMMUNITY LOCATION ATAK KTM MAP AREA" or "1 1 COMMUNITY ...")
+                const fieldMatch = line.match(/^(\d+)\.?\s*(\d+)?\s*(\S+)\s*(\S+)\s*(\S+)\s*(\S+)\s*(\S+)\s*([\d.]+)/) || 
+                                  line.match(/^(\d+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+([\d.]+)/);
                 if (fieldMatch) {
                     if (currentField) fields.push(currentField);
                     currentField = {
-                        community: fieldMatch[3],
-                        location: fieldMatch[4],
-                        atak: fieldMatch[5],
-                        ktm: fieldMatch[6],
-                        map: fieldMatch[7],
-                        area: parseFloat(fieldMatch[8]) || 0,
+                        community: fieldMatch[2] || fieldMatch[3],
+                        location: fieldMatch[3] || fieldMatch[4],
+                        atak: fieldMatch[4] || fieldMatch[5],
+                        ktm: fieldMatch[5] || fieldMatch[6],
+                        map: fieldMatch[6] || fieldMatch[7],
+                        area: parseFloat(fieldMatch[7] || fieldMatch[8]) || 0,
                         owners: []
                     };
                 }
-                // Match owner data (e.g., "Owner NAME του FATHER, κάτοικος ADDRESS, Α.Φ.Μ TIN, Δ.Ο.Υ DOY")
-                const ownerMatch = line.match(/Owner\s+(.+?)\s+του\s+(.+?),\s+κάτοικος\s+(.+?),\s+Α\.Φ\.Μ\s+(\S+),\s+Δ\.Ο\.Υ\s+(.+)/);
+                // Match owner data (e.g., "Owner NAME του FATHER, κάτοικος ADDRESS, Α.Φ.Μ TIN, Δ.Ο.Υ DOY" or variations)
+                const ownerMatch = line.match(/Owner\s+(.+?)\s+του\s+(.+?)(?:,\s+κάτοικος\s+(.+?)(?:,\s+Α\.Φ\.Μ\s+(\S+)(?:,\s+Δ\.Ο\.Υ\s+(.+))?)?)?/) ||
+                                  line.match(/Owner\s+(.+?)\s+(.+?)(?:,\s+(.+?)(?:,\s+(\S+)(?:,\s+(.+))?)?)?/);
                 if (ownerMatch && currentField) {
                     currentField.owners.push({
-                        name: ownerMatch[1],
-                        father: ownerMatch[2],
-                        address: ownerMatch[3],
-                        tin: ownerMatch[4],
-                        doy: ownerMatch[5]
+                        name: ownerMatch[1] || '',
+                        father: ownerMatch[2] || '',
+                        address: ownerMatch[3] || '',
+                        tin: ownerMatch[4] || '',
+                        doy: ownerMatch[5] || ''
                     });
                 }
                 // Match tenant data (e.g., "Tenant NAME του FATHER, επαγγέλματος αγρότης, κάτοικος ADDRESS, Α.Φ.Μ TIN, Δ.Ο.Υ DOY")
-                const tenantMatch = line.match(/Tenant\s+(.+?)\s+του\s+(.+?),\s+επαγγέλματος\s+αγρότης,\s+κάτοικος\s+(.+?),\s+Α\.Φ\.Μ\s+(\S+),\s+Δ\.Ο\.Υ\s+(.+)/);
+                const tenantMatch = line.match(/Tenant\s+(.+?)\s+του\s+(.+?)(?:,\s+επαγγέλματος\s+αγρότης,\s+κάτοικος\s+(.+?)(?:,\s+Α\.Φ\.Μ\s+(\S+)(?:,\s+Δ\.Ο\.Υ\s+(.+))?)?)?/);
                 if (tenantMatch) {
                     tenant = {
-                        name: tenantMatch[1],
-                        father: tenantMatch[2],
-                        address: tenantMatch[3],
-                        tin: tenantMatch[4],
-                        doy: tenantMatch[5]
+                        name: tenantMatch[1] || '',
+                        father: tenantMatch[2] || '',
+                        address: tenantMatch[3] || '',
+                        tin: tenantMatch[4] || '',
+                        doy: tenantMatch[5] || ''
                     };
                 }
                 // Match agreement details (e.g., "Start Date: DD/MM/YYYY End Date: DD/MM/YYYY Rent: AMOUNT/Ha")
-                const agreementMatch = line.match(/Start Date:\s*(\d{2}\/\d{2}\/\d{4})\s*End Date:\s*(\d{2}\/\d{2}\/\d{4})\s*Rent:\s*([\d.]+)\/Ha/);
+                const agreementMatch = line.match(/Start\s*Date:\s*(\d{2}\/\d{2}\/\d{4})\s*End\s*Date:\s*(\d{2}\/\d{2}\/\d{4})\s*Rent:\s*([\d.]+)\/Ha/) ||
+                                      line.match(/(\d{2}\/\d{2}\/\d{4})\s+to\s+(\d{2}\/\d{2}\/\d{4})\s+([\d.]+)\/Ha/);
                 if (agreementMatch) {
                     agreementDetails = {
-                        startDate: agreementMatch[1],
-                        endDate: agreementMatch[2],
+                        startDate: agreementMatch[1] || '',
+                        endDate: agreementMatch[2] || '',
                         rentAmount: parseFloat(agreementMatch[3]) || 0
                     };
                 }
@@ -129,9 +132,11 @@
                 };
             }
             if (!agreementDetails.startDate) {
+                const today = new Date();
+                const nextYear = new Date(today.getFullYear() + 1, 11, 31);
                 agreementDetails = {
-                    startDate: '01/01/2025',
-                    endDate: '31/12/2025',
+                    startDate: today.toLocaleDateString('en-GB'),
+                    endDate: nextYear.toLocaleDateString('en-GB'),
                     rentAmount: 100
                 };
             }
@@ -147,30 +152,34 @@
             agreementDisplay.innerHTML = '';
 
             // Display fields and owners
-            fields.forEach((field, i) => {
-                const fieldDiv = document.createElement('div');
-                fieldDiv.className = 'mb-4 p-4 border rounded';
-                fieldDiv.innerHTML = `
-                    <h3 class="font-semibold">Field ${i + 1}</h3>
-                    <p>Community: ${field.community}</p>
-                    <p>Location: ${field.location}</p>
-                    <p>ATAK: ${field.atak}</p>
-                    <p>KTM: ${field.ktm}</p>
-                    <p>Cartographic Code: ${field.map}</p>
-                    <p>Area: ${field.area} Ha</p>
-                    <h4 class="font-medium mt-2">Owners:</h4>
-                    ${field.owners.map((owner, j) => `
-                        <div class="ml-4">
-                            <p>Owner ${j + 1}: ${owner.name}</p>
-                            <p>Father: ${owner.father}</p>
-                            <p>Address: ${owner.address}</p>
-                            <p>TIN: ${owner.tin}</p>
-                            <p>DOY: ${owner.doy}</p>
-                        </div>
-                    `).join('')}
-                `;
-                fieldsDisplay.appendChild(fieldDiv);
-            });
+            if (fields.length > 0) {
+                fields.forEach((field, i) => {
+                    const fieldDiv = document.createElement('div');
+                    fieldDiv.className = 'mb-4 p-4 border rounded';
+                    fieldDiv.innerHTML = `
+                        <h3 class="font-semibold">Field ${i + 1}</h3>
+                        <p>Community: ${field.community}</p>
+                        <p>Location: ${field.location}</p>
+                        <p>ATAK: ${field.atak}</p>
+                        <p>KTM: ${field.ktm}</p>
+                        <p>Cartographic Code: ${field.map}</p>
+                        <p>Area: ${field.area} Ha</p>
+                        <h4 class="font-medium mt-2">Owners:</h4>
+                        ${field.owners.map((owner, j) => `
+                            <div class="ml-4">
+                                <p>Owner ${j + 1}: ${owner.name}</p>
+                                <p>Father: ${owner.father}</p>
+                                <p>Address: ${owner.address}</p>
+                                <p>TIN: ${owner.tin}</p>
+                                <p>DOY: ${owner.doy}</p>
+                            </div>
+                        `).join('')}
+                    `;
+                    fieldsDisplay.appendChild(fieldDiv);
+                });
+            } else {
+                fieldsDisplay.innerHTML = '<p>No fields detected in the PDF.</p>';
+            }
 
             // Display tenant info
             tenantDisplay.innerHTML = `
@@ -196,7 +205,7 @@
 
         function generateAgreements() {
             if (!fields.length) {
-                alert('No fields data available. Please upload a PDF.');
+                alert('No fields data available. Please upload a PDF with valid field data.');
                 return;
             }
 
@@ -204,13 +213,14 @@
             const agreementsByTIN = {};
             fields.forEach((field, index) => {
                 field.owners.forEach(owner => {
-                    if (!agreementsByTIN[owner.tin]) {
-                        agreementsByTIN[owner.tin] = {
+                    const ownerTin = owner.tin || 'Unknown TIN';
+                    if (!agreementsByTIN[ownerTin]) {
+                        agreementsByTIN[ownerTin] = {
                             owner: owner,
                             fields: []
                         };
                     }
-                    agreementsByTIN[owner.tin].fields.push({ ...field, index: index + 1 });
+                    agreementsByTIN[ownerTin].fields.push({ ...field, index: index + 1 });
                 });
             });
 
@@ -226,8 +236,8 @@
                 // Generating agreement content
                 doc.text('ΙΔΙΩΤΙΚΟ ΣΥΜΦΩΝΗΤΙΚΟ ΑΓΡΟΜΙΣΘΩΣΗΣ', 20, 20);
                 doc.text(`Σήμερα την ${agreementDetails.startDate} στο Δημητρίτσι οι υπογράφοντες το συμφωνητικό αυτό`, 20, 30);
-                doc.text(`αφενός ο/η ${agreement.owner.name} του ${agreement.owner.father}, κάτοικος ${agreement.owner.address},`, 20, 40);
-                doc.text(`Α.Φ.Μ ${agreement.owner.tin}, Δ.Ο.Υ ${agreement.owner.doy}`, 20, 50);
+                doc.text(`αφενός ο/η ${agreement.owner.name || 'Unknown Owner'} του ${agreement.owner.father || 'Unknown'}, κάτοικος ${agreement.owner.address || 'Unknown Address'},`, 20, 40);
+                doc.text(`Α.Φ.Μ ${agreement.owner.tin || 'Unknown TIN'}, Δ.Ο.Υ ${agreement.owner.doy || 'Unknown DOY'}`, 20, 50);
                 doc.text(`και αφετέρου ο/η ${tenant.name} του ${tenant.father}, επαγγέλματος αγρότης,`, 20, 60);
                 doc.text(`κάτοικος ${tenant.address}, Α.Φ.Μ ${tenant.tin}, Δ.Ο.Υ ${tenant.doy}`, 20, 70);
                 doc.text('συμφώνησαν από κοινού και αποδέχτηκαν τα εξής:', 20, 80);
@@ -251,7 +261,7 @@
                 y += 10;
                 doc.text('4. ΧΡΗΣΗ. Ο μίσθιος αγρός θα χρησιμοποιηθεί αποκλειστικά για αγροτική καλλιέργεια. Απαγορεύεται απόλυτα οποιαδήποτε μετατροπή της χρήσης ή του τρόπου εκμετάλλευσης του μισθίου, η ολική ή μερική υπομίσθωσή του, ή η με οποιοδήποτε τρόπο, με ή χωρίς αντάλλαγμα παραχώρηση της χρήσης του μισθίου σε τρίτους καθώς και η πρόσληψη συνεταίρου, χωρίς την προηγούμενη έγγραφη συναίνεση του εκμισθωτή.', 20, y, { maxWidth: 170 });
                 y += 40;
-                doc.text('5. ΚΑΛΗ ΧΡΗΣΗ ΤΟΥ ΜΙΣΘΙΟΥ. Ο μισθωτής υποχρεούται να κάνει καλή χρήση του μισθίου, να το εκμεταλλεύεται με επιμέλεια και σύμφωνα με τον προορισμό του και να το διατηρεί κατάλληλο για τη συμφωνημένη χρήση, κάνοντας με αποκλειστική δαπάνη και επιμέλειά του κάθε είδους τακτικές ή έκτακτες επισκευές ή βελτιώσεις, διαφορετικά, ευθύνεται για αποζημίωση για τις φθορές και τις βλάβες που προξενήθησαν σ\' αυτό.', 20, y, { maxWidth: 170 });
+                doc.text('5. ΚΑΛΗ ΧΡΗΣΗ ΤΟΥ ΜΙΣΘΙΟΥ. Ο μισθωτής υποχρεούται να κάνει καλή χρήση του μισθίου, να το εκμεταλλεύεται με επιμέλεια και σύμφωνα με τον προορισμό του και να το διατηρεί κατάλληλο για τη συμφωνημένη χρήση, κάνοντας με αποκλειστική δαπάνη και επιμέλειά του κάθε είδους τακτικές ή έκτακτες επισκευές ή βελτιώσεις, διαφορετικά, ευθύνεται για αποζημίωση για τις φθορές και τις βλάβες που προξενήθηκαν σ\' αυτό.', 20, y, { maxWidth: 170 });
                 y += 40;
                 doc.text('Το παρόν μισθωτήριο διαβάστηκε και έγινε αποδεκτό από τους συμβαλλομένους, υπογράφη από αυτούς και ο καθένας έλαβε από ένα όμοιο αντίτυπο.', 20, y, { maxWidth: 170 });
                 y += 20;
@@ -265,7 +275,7 @@
 
                 const agreementDiv = document.createElement('div');
                 agreementDiv.innerHTML = `
-                    <p>Agreement for ${agreement.owner.name} (TIN: ${tin})</p>
+                    <p>Agreement for ${agreement.owner.name || 'Unknown Owner'} (TIN: ${tin})</p>
                     <button class="bg-blue-500 text-white p-2 rounded" onclick="downloadPDF('${tin}')">Download PDF</button>
                 `;
                 agreementList.appendChild(agreementDiv);
