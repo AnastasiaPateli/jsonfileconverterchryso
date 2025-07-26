@@ -69,34 +69,52 @@
             const lines = text.split('\n').map(line => line.trim()).filter(line => line);
             let currentField = null;
 
-            for (let line of lines) {
-                // Match field data (e.g., "1. COMMUNITY LOCATION ATAK KTM MAP AREA" or "1 1 COMMUNITY ...")
-                const fieldMatch = line.match(/^(\d+)\.?\s*(\d+)?\s*(\S+)\s*(\S+)\s*(\S+)\s*(\S+)\s*(\S+)\s*([\d.]+)/) || 
-                                  line.match(/^(\d+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+([\d.]+)/);
-                if (fieldMatch) {
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+
+                // Match field data (e.g., "Αγροτεμάχιο 1" followed by details)
+                if (line.match(/^Αγροτεμάχιο\s+(\d+)/)) {
                     if (currentField) fields.push(currentField);
                     currentField = {
-                        community: fieldMatch[2] || fieldMatch[3],
-                        location: fieldMatch[3] || fieldMatch[4],
-                        atak: fieldMatch[4] || fieldMatch[5],
-                        ktm: fieldMatch[5] || fieldMatch[6],
-                        map: fieldMatch[6] || fieldMatch[7],
-                        area: parseFloat(fieldMatch[7] || fieldMatch[8]) || 0,
+                        index: parseInt(line.match(/^Αγροτεμάχιο\s+(\d+)/)[1]),
+                        community: '',
+                        location: '',
+                        atak: '',
+                        ktm: '',
+                        map: '',
+                        area: 0,
                         owners: []
                     };
+                    // Look ahead for field details in next lines
+                    for (let j = i + 1; j < lines.length && !lines[j].match(/^Αγροτεμάχιο\s+\d+/) && !lines[j].match(/Ιδιοκτήτης|Tenant|Start Date/); j++) {
+                        const detailLine = lines[j].trim();
+                        const parts = detailLine.split(/\s+/).filter(p => p);
+                        if (parts.length >= 6) {
+                            currentField.community = parts[0] || '';
+                            currentField.location = parts[1] || '';
+                            currentField.atak = parts[2] || '';
+                            currentField.ktm = parts[3] || '';
+                            currentField.map = parts[4] || '';
+                            currentField.area = parseFloat(parts[5]) || 0;
+                        }
+                    }
                 }
-                // Match owner data (e.g., "Owner NAME του FATHER, κάτοικος ADDRESS, Α.Φ.Μ TIN, Δ.Ο.Υ DOY" or variations)
-                const ownerMatch = line.match(/Owner\s+(.+?)\s+του\s+(.+?)(?:,\s+κάτοικος\s+(.+?)(?:,\s+Α\.Φ\.Μ\s+(\S+)(?:,\s+Δ\.Ο\.Υ\s+(.+))?)?)?/) ||
-                                  line.match(/Owner\s+(.+?)\s+(.+?)(?:,\s+(.+?)(?:,\s+(\S+)(?:,\s+(.+))?)?)?/);
-                if (ownerMatch && currentField) {
-                    currentField.owners.push({
-                        name: ownerMatch[1] || '',
-                        father: ownerMatch[2] || '',
-                        address: ownerMatch[3] || '',
-                        tin: ownerMatch[4] || '',
-                        doy: ownerMatch[5] || ''
-                    });
+
+                // Match owner data (e.g., "Ιδιοκτήτης NAME του FATHER, κάτοικος ADDRESS, Α.Φ.Μ TIN, Δ.Ο.Υ DOY")
+                if (line.match(/^Ιδιοκτήτης\s/) && currentField) {
+                    const ownerMatch = line.match(/Ιδιοκτήτης\s+(.+?)\s+του\s+(.+?)(?:,\s+κάτοικος\s+(.+?)(?:,\s+Α\.Φ\.Μ\s+(\S+)(?:,\s+Δ\.Ο\.Υ\s+(.+))?)?)?/) ||
+                                      line.match(/Ιδιοκτήτης\s+(.+?)\s+(.+?)(?:,\s+(.+?)(?:,\s+(\S+)(?:,\s+(.+))?)?)?/);
+                    if (ownerMatch) {
+                        currentField.owners.push({
+                            name: ownerMatch[1] || '',
+                            father: ownerMatch[2] || '',
+                            address: ownerMatch[3] || '',
+                            tin: ownerMatch[4] || '',
+                            doy: ownerMatch[5] || ''
+                        });
+                    }
                 }
+
                 // Match tenant data (e.g., "Tenant NAME του FATHER, επαγγέλματος αγρότης, κάτοικος ADDRESS, Α.Φ.Μ TIN, Δ.Ο.Υ DOY")
                 const tenantMatch = line.match(/Tenant\s+(.+?)\s+του\s+(.+?)(?:,\s+επαγγέλματος\s+αγρότης,\s+κάτοικος\s+(.+?)(?:,\s+Α\.Φ\.Μ\s+(\S+)(?:,\s+Δ\.Ο\.Υ\s+(.+))?)?)?/);
                 if (tenantMatch) {
@@ -108,6 +126,7 @@
                         doy: tenantMatch[5] || ''
                     };
                 }
+
                 // Match agreement details (e.g., "Start Date: DD/MM/YYYY End Date: DD/MM/YYYY Rent: AMOUNT/Ha")
                 const agreementMatch = line.match(/Start\s*Date:\s*(\d{2}\/\d{2}\/\d{4})\s*End\s*Date:\s*(\d{2}\/\d{2}\/\d{4})\s*Rent:\s*([\d.]+)\/Ha/) ||
                                       line.match(/(\d{2}\/\d{2}\/\d{4})\s+to\s+(\d{2}\/\d{2}\/\d{4})\s+([\d.]+)\/Ha/);
@@ -157,7 +176,7 @@
                     const fieldDiv = document.createElement('div');
                     fieldDiv.className = 'mb-4 p-4 border rounded';
                     fieldDiv.innerHTML = `
-                        <h3 class="font-semibold">Field ${i + 1}</h3>
+                        <h3 class="font-semibold">Field ${field.index}</h3>
                         <p>Community: ${field.community}</p>
                         <p>Location: ${field.location}</p>
                         <p>ATAK: ${field.atak}</p>
@@ -220,7 +239,7 @@
                             fields: []
                         };
                     }
-                    agreementsByTIN[ownerTin].fields.push({ ...field, index: index + 1 });
+                    agreementsByTIN[ownerTin].fields.push({ ...field, index: field.index });
                 });
             });
 
