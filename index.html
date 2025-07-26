@@ -3,80 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agreement Generator</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .container { max-width: 800px; margin: auto; }
-        .upload-section, .result-section { margin: 20px 0; }
-        button { padding: 10px 20px; background-color: #007BFF; color: white; border: none; cursor: pointer; }
-        button:hover { background-color: #0056b3; }
-        #output { border: 1px solid #ccc; padding: 10px; white-space: pre-wrap; }
-    </style>
+    <title>Tenancy Agreement Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <div class="container">
-        <h1>Agreement Generator</h1>
-        <div class="upload-section">
-            <input type="file" id="pdfUpload" accept=".pdf">
-            <button onclick="processPDF()">Generate Agreement</button>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold mb-4 text-center">Tenancy Agreement Generator</h1>
+        <div class="mb-4">
+            <label for="jsonFile" class="block text-lg font-medium mb-2">Upload JSON File:</label>
+            <input type="file" id="jsonFile" accept=".json" class="border p-2 rounded w-full">
         </div>
-        <div class="result-section">
-            <h2>Generated Agreement</h2>
-            <div id="output"></div>
-            <button onclick="downloadDoc()">Download as .doc</button>
-        </div>
+        <div id="agreements" class="space-y-4"></div>
     </div>
 
     <script>
-        function processPDF() {
-            const fileInput = document.getElementById('pdfUpload');
-            const file = fileInput.files[0];
-            if (!file) {
-                alert('Please upload a PDF file.');
-                return;
+        // Template for the agreement in LaTeX format
+        const agreementTemplate = (landlord, tenant, fields, rentalFee) => `
+\\documentclass[a4paper,12pt]{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage[greek]{babel}
+\\usepackage{geometry}
+\\geometry{a4paper, margin=1in}
+\\usepackage{parskip}
+\\begin{document}
+
+\\textbf{ΙΔΙΩΤΙΚΟ ΣΥΜΦΩΝΗΤΙΚΟ ΑΓΡΟΜΙΣΘΩΣΗΣ}
+
+Σήμερα την 1η Νοεμβρίου 2024 στο Δημητρίτσι οι υπογράφοντες το συμφωνητικό αυτό
+
+αφενός ο/η ${landlord.name} του ${landlord.fatherName}, κάτοικος ${landlord.address}, οδός ${landlord.street} αρ. ${landlord.streetNumber}, Α.Φ.Μ ${landlord.tin}, Δ.Ο.Υ ${landlord.taxOffice}
+
+και αφετέρου ο/η ${tenant.name} του ${tenant.fatherName}, επαγγέλματος αγρότης, κάτοικος ${tenant.address}, οδός ${tenant.street} αρ. ${tenant.streetNumber}, Α.Φ.Μ ${tenant.tin}, Δ.Ο.Υ Α Σερρών
+
+συμφώνησαν από κοινού και αποδέχτηκαν τα εξής:
+
+\\textbf{1. ΜΙΣΘΙΟ.} Ο πρώτος συμβαλλόμενος ("εκμισθωτής") έχει στην αποκλειστική κυριότητα, νομή και κατοχή του τους κάτωθι αγρούς:
+
+\\begin{tabular}{|c|l|l|l|l|l|}
+\\hline
+Α/Α & ΚΟΙΝΟΤΗΤΑ (κωδ.) & ΤΟΠΟΘΕΣΙΑ & Α.Τ.Α.Κ. & ΑΡ.ΚΤΗΜ.ΤΕΜ. & ΕΚΤΑΣΗ (Ha) \\\\
+\\hline
+${fields.map((field, index) => `${index + 1}. ${field.communityCode} & ${field.location} & ${field.atak} & ${field.plotNumber} & ${field.areaHa}`).join(' \\\\ \\hline\n')}
+\\hline
+\\end{tabular}
+
+Ο εκμισθωτής εκμισθώνει με το παρόν συμφωνητικό στο μισθωτή τους παραπάνω αγρούς, με τους εξής όρους και συμφωνίες που είναι όλοι ουσιώδεις:
+
+\\textbf{2. ΔΙΑΡΚΕΙΑ.} Η διάρκεια της παρούσας μίσθωσης ορίζεται: Αρχίζει την 1η ΝΟΕΜΒΡΙΟΥ 2024 και λήγει την 31η ΟΚΤΩΒΡΙΟΥ 2032.
+
+\\textbf{3. ΜΙΣΘΩΜΑ.} Το ετήσιο μίσθωμα ορίζεται σε ευρώ ${rentalFee}/ΣΤΡ
+
+\\textbf{4. ΧΡΗΣΗ.} Ο μίσθιος αγρός θα χρησιμοποιηθεί αποκλειστικά για αγροτική καλλιέργεια. Απαγορεύεται απόλυτα οποιαδήποτε μετατροπή της χρήσης ή του τρόπου εκμετάλλευσης του μισθίου, η ολική ή μερική υπομίσθωσή του, ή η με οποιοδήποτε τρόπο, με ή χωρίς αντάλλαγμα παραχώρηση της χρήσης του μισθίου σε τρίτους καθώς και η πρόσληψη συνεταίρου, χωρίς την προηγούμενη έγγραφη συναίνεση του εκμισθωτή.
+
+\\textbf{5. ΚΑΛΗ ΧΡΗΣΗ ΤΟΥ ΜΙΣΘΙΟΥ.} Ο μισθωτής υποχρεούται να κάνει καλή χρήση του μισθίου, να το εκμεταλλεύεται με επιμέλεια και σύμφωνα με τον προορισμό του και να το διατηρεί κατάλληλο για τη συμφωνημένη χρήση, κάνοντας με αποκλειστική δαπάνη και επιμέλειά του κάθε είδους τακτικές ή έκτακτες επισκευές ή βελτιώσεις, διαφορετικά, ευθύνεται για αποζημίωση για τις φθορές και τις βλάβες που προξενήθησαν σ' αυτό.
+
+Το παρόν μισθωτήριο διαβάστηκε και έγινε αποδεκτό από τους συμβαλλομένους, υπογράφη από αυτούς και ο καθένας έλαβε από ένα όμοιο αντίτυπο.
+
+\\vspace{1cm}
+
+\\begin{center}
+\\textbf{ΟΙ ΣΥΜΒΑΛΛΟΜΕΝΟΙ}
+\\end{center}
+
+\\begin{tabular}{p{5cm} p{5cm} p{5cm}}
+\\textbf{Ο ΕΚΜΙΣΘΩΤΗΣ} & \\textbf{ΘΕΩΡΗΘΗΚΕ} & \\textbf{Ο ΜΙΣΘΩΤΗΣ} \\\\
+${landlord.name} & & ${tenant.name} \\\\
+\\end{tabular}
+
+\\vspace{1cm}
+
+Για το γνήσιο των υπογραφών
+
+\\vspace{0.5cm}
+
+ΗΜΕΡΟΜΗΝΙΑ
+
+\\end{document}
+`;
+
+        // Function to process JSON and generate agreements
+        function processJsonData(data) {
+            const tenant = data.tenant;
+            const fields = data.fields;
+            const rentalFee = data.rentalFee || "500"; // Default rental fee if not provided
+
+            // Group fields by owner TIN
+            const ownerFields = {};
+            fields.forEach(field => {
+                field.owners.forEach(owner => {
+                    if (!ownerFields[owner.tin]) {
+                        ownerFields[owner.tin] = {
+                            owner: owner,
+                            fields: []
+                        };
+                    }
+                    ownerFields[owner.tin].fields.push({
+                        communityCode: field.communityCode,
+                        location: field.location,
+                        atak: field.atak,
+                        plotNumber: field.plotNumber,
+                        areaHa: field.areaHa
+                    });
+                });
+            });
+
+            // Generate agreements
+            const agreementsDiv = document.getElementById('agreements');
+            agreementsDiv.innerHTML = '';
+            Object.values(ownerFields).forEach(({ owner, fields }, index) => {
+                const agreement = agreementTemplate(owner, tenant, fields, rentalFee);
+                
+                // Create download button
+                const agreementDiv = document.createElement('div');
+                agreementDiv.className = 'bg-white p-4 rounded shadow';
+                agreementDiv.innerHTML = `
+                    <h2 class="text-xl font-semibold mb-2">Agreement for ${owner.name} (TIN: ${owner.tin})</h2>
+                    <pre class="bg-gray-100 p-2 rounded mb-2 overflow-auto">${agreement}</pre>
+                    <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" onclick="downloadAgreement('${owner.tin}', \`${agreement}\`)">Download Agreement</button>
+                `;
+                agreementsDiv.appendChild(agreementDiv);
+            });
+        }
+
+        // Function to download agreement as .tex file
+        function downloadAgreement(tin, content) {
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `agreement_${tin}.tex`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Handle file upload
+        document.getElementById('jsonFile').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        processJsonData(data);
+                    } catch (error) {
+                        alert('Error parsing JSON file: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
             }
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const typedarray = new Uint8Array(e.target.result);
-                // Simulate PDF text extraction (in real scenario, use a library like pdf.js)
-                const text = extractTextFromPDF(typedarray);
-                const filledAgreement = fillAgreement(text);
-                document.getElementById('output').textContent = filledAgreement;
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function extractTextFromPDF(typedarray) {
-            // This is a simulation; in practice, use pdf.js or a backend OCR service
-            // Here we assume the input PDF content is similar to the provided OCR data
-            return `ENNAIA AHTE\n# ENK\&YZKE\n# TAMA TIA\nTON\nKANO E\n# K\&YZ\n# KK&)\n... (simulated extracted text) ...`;
-        }
-
-        function fillAgreement(text) {
-            // Simulate autofill based on patterns (e.g., #K, #1, etc.)
-            let agreement = `Agreement Document\nDate: ${new Date().toLocaleDateString()}\n\n`;
-            agreement += `Parties:\n- Party A: [Autofilled from #K patterns]\n- Party B: [Autofilled from #1 patterns]\n\n`;
-            agreement += `Terms:\n- Term 1: [Content from KANO E]\n- Term 2: [Content from TAMA TIA]\n\n`;
-            agreement += `Signature: ____________________\nDate: ${new Date().toLocaleDateString()}`;
-
-            // Simple pattern matching (replace with actual logic based on JSON or PDF structure)
-            if (text.includes('#K')) agreement = agreement.replace('[Autofilled from #K patterns]', 'Party A Details');
-            if (text.includes('#1')) agreement = agreement.replace('[Autofilled from #1 patterns]', 'Party B Details');
-            if (text.includes('KANO E')) agreement = agreement.replace('[Content from KANO E]', 'Execution Clause');
-            if (text.includes('TAMA TIA')) agreement = agreement.replace('[Content from TAMA TIA]', 'Payment Terms');
-
-            return agreement;
-        }
-
-        function downloadDoc() {
-            const content = document.getElementById('output').textContent;
-            const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'agreement.doc';
-            link.click();
-        }
+        });
     </script>
 </body>
 </html>
