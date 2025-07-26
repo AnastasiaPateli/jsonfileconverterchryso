@@ -170,8 +170,6 @@
                         <th>ΑΡ.ΚΤΗΜ.ΤΕΜ.</th>
                         <th>ΧΑΡΤΟΓΡΑΦΙΚΟ</th>
                         <th>ΕΚΤΑΣΗ (Ha)</th>
-                        <th>ΕΝΑΡΞΗ ΜΙΣΘΩΣΗΣ</th>
-                        <th>ΛΗΞΗ ΜΙΣΘΩΣΗΣ</th>
                     </tr>
                 `;
                 agreement.fields.forEach((field, index) => {
@@ -184,8 +182,6 @@
                         <td>${field.other_cartographic_background}</td>
                         <td>${field.cartographic_background}</td>
                         <td>${field.area_ha}</td>
-                        <td>${field.rental_start_date}</td>
-                        <td>${field.rental_end_date}</td>
                     `;
                     table.appendChild(row);
                 });
