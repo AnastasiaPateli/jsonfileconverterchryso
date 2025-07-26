@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agreement Generator</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        .upload-section, .result-section { margin: 20px 0; }
+        button { padding: 10px 20px; background-color: #007BFF; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        #output { border: 1px solid #ccc; padding: 10px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Agreement Generator</h1>
+        <div class="upload-section">
+            <input type="file" id="pdfUpload" accept=".pdf">
+            <button onclick="processPDF()">Generate Agreement</button>
+        </div>
+        <div class="result-section">
+            <h2>Generated Agreement</h2>
+            <div id="output"></div>
+            <button onclick="downloadDoc()">Download as .doc</button>
+        </div>
+    </div>
+
+    <script>
+        function processPDF() {
+            const fileInput = document.getElementById('pdfUpload');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Please upload a PDF file.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const typedarray = new Uint8Array(e.target.result);
+                // Simulate PDF text extraction (in real scenario, use a library like pdf.js)
+                const text = extractTextFromPDF(typedarray);
+                const filledAgreement = fillAgreement(text);
+                document.getElementById('output').textContent = filledAgreement;
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function extractTextFromPDF(typedarray) {
+            // This is a simulation; in practice, use pdf.js or a backend OCR service
+            // Here we assume the input PDF content is similar to the provided OCR data
+            return `ENNAIA AHTE\n# ENK\&YZKE\n# TAMA TIA\nTON\nKANO E\n# K\&YZ\n# KK&)\n... (simulated extracted text) ...`;
+        }
+
+        function fillAgreement(text) {
+            // Simulate autofill based on patterns (e.g., #K, #1, etc.)
+            let agreement = `Agreement Document\nDate: ${new Date().toLocaleDateString()}\n\n`;
+            agreement += `Parties:\n- Party A: [Autofilled from #K patterns]\n- Party B: [Autofilled from #1 patterns]\n\n`;
+            agreement += `Terms:\n- Term 1: [Content from KANO E]\n- Term 2: [Content from TAMA TIA]\n\n`;
+            agreement += `Signature: ____________________\nDate: ${new Date().toLocaleDateString()}`;
+
+            // Simple pattern matching (replace with actual logic based on JSON or PDF structure)
+            if (text.includes('#K')) agreement = agreement.replace('[Autofilled from #K patterns]', 'Party A Details');
+            if (text.includes('#1')) agreement = agreement.replace('[Autofilled from #1 patterns]', 'Party B Details');
+            if (text.includes('KANO E')) agreement = agreement.replace('[Content from KANO E]', 'Execution Clause');
+            if (text.includes('TAMA TIA')) agreement = agreement.replace('[Content from TAMA TIA]', 'Payment Terms');
+
+            return agreement;
+        }
+
+        function downloadDoc() {
+            const content = document.getElementById('output').textContent;
+            const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'agreement.doc';
+            link.click();
+        }
+    </script>
+</body>
+</html>
