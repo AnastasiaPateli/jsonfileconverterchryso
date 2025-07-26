@@ -28,29 +28,11 @@
 
         <!-- Parsed Data Display -->
         <div id="parsedData" class="mb-4 hidden">
-            <h2 class="text-lg font-semibold">Parsed Fields and Owners</h2>
-            <div id="fieldsDisplay"></div>
+            <h2 class="text-lg font-semibold">Parsed Data</h2>
+            <div id="fieldsDisplay" class="mb-4"></div>
+            <div id="tenantDisplay" class="mb-4"></div>
+            <div id="agreementDisplay" class="mb-4"></div>
         </div>
-
-        <!-- Tenant Information -->
-        <div class="mb-4">
-            <h2 class="text-lg font-semibold">Tenant Information</h2>
-            <input type="text" id="tenantName" placeholder="Tenant Name" class="mt-1 block w-full border rounded p-2">
-            <input type="text" id="tenantFather" placeholder="Father's Name" class="mt-1 block w-full border rounded p-2">
-            <input type="text" id="tenantAddress" placeholder="Address" class="mt-1 block w-full border rounded p-2">
-            <input type="text" id="tenantTIN" placeholder="TIN" class="mt-1 block w-full border rounded p-2">
-            <input type="text" id="tenantDOY" placeholder="Tax Office (DOY)" class="mt-1 block w-full border rounded p-2">
-        </div>
-
-        <!-- Agreement Details -->
-        <div class="mb-4">
-            <h2 class="text-lg font-semibold">Agreement Details</h2>
-            <input type="date" id="startDate" class="mt-1 block w-full border rounded p-2">
-            <input type="date" id="endDate" class="mt-1 block w-full border rounded p-2">
-            <input type="text" id="rentAmount" placeholder="Rent Amount per Hectare (€/Ha)" class="mt-1 block w-full border rounded p-2">
-        </div>
-
-        <button onclick="generateAgreements()" class="bg-green-500 text-white p-2 rounded" disabled id="generateButton">Generate Agreements</button>
 
         <!-- Agreement List -->
         <div id="agreement-list" class="mt-4"></div>
@@ -61,6 +43,8 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
         let fields = [];
+        let tenant = {};
+        let agreementDetails = {};
 
         async function processPDF() {
             const fileInput = document.getElementById('pdfUpload');
@@ -78,13 +62,15 @@
                 text += textContent.items.map(item => item.str).join(' ') + '\n';
             }
 
-            // Parse PDF text to extract fields and owners
+            // Parse PDF text to extract fields, owners, tenant, and agreement details
             fields = [];
+            tenant = {};
+            agreementDetails = {};
             const lines = text.split('\n').map(line => line.trim()).filter(line => line);
             let currentField = null;
 
             for (let line of lines) {
-                // Match field data (assuming format like: "1. 1 COMMUNITY LOCATION ATAK KTM MAP AREA")
+                // Match field data (e.g., "1. 1 COMMUNITY LOCATION ATAK KTM MAP AREA")
                 const fieldMatch = line.match(/^(\d+)\.\s*(\d+)\s*(\S+)\s*(\S+)\s*(\S+)\s*(\S+)\s*(\S+)\s*([\d.]+)/);
                 if (fieldMatch) {
                     if (currentField) fields.push(currentField);
@@ -98,7 +84,7 @@
                         owners: []
                     };
                 }
-                // Match owner data (assuming format like: "Owner NAME FATHER ADDRESS TIN DOY")
+                // Match owner data (e.g., "Owner NAME του FATHER, κάτοικος ADDRESS, Α.Φ.Μ TIN, Δ.Ο.Υ DOY")
                 const ownerMatch = line.match(/Owner\s+(.+?)\s+του\s+(.+?),\s+κάτοικος\s+(.+?),\s+Α\.Φ\.Μ\s+(\S+),\s+Δ\.Ο\.Υ\s+(.+)/);
                 if (ownerMatch && currentField) {
                     currentField.owners.push({
@@ -109,15 +95,58 @@
                         doy: ownerMatch[5]
                     });
                 }
+                // Match tenant data (e.g., "Tenant NAME του FATHER, επαγγέλματος αγρότης, κάτοικος ADDRESS, Α.Φ.Μ TIN, Δ.Ο.Υ DOY")
+                const tenantMatch = line.match(/Tenant\s+(.+?)\s+του\s+(.+?),\s+επαγγέλματος\s+αγρότης,\s+κάτοικος\s+(.+?),\s+Α\.Φ\.Μ\s+(\S+),\s+Δ\.Ο\.Υ\s+(.+)/);
+                if (tenantMatch) {
+                    tenant = {
+                        name: tenantMatch[1],
+                        father: tenantMatch[2],
+                        address: tenantMatch[3],
+                        tin: tenantMatch[4],
+                        doy: tenantMatch[5]
+                    };
+                }
+                // Match agreement details (e.g., "Start Date: DD/MM/YYYY End Date: DD/MM/YYYY Rent: AMOUNT/Ha")
+                const agreementMatch = line.match(/Start Date:\s*(\d{2}\/\d{2}\/\d{4})\s*End Date:\s*(\d{2}\/\d{2}\/\d{4})\s*Rent:\s*([\d.]+)\/Ha/);
+                if (agreementMatch) {
+                    agreementDetails = {
+                        startDate: agreementMatch[1],
+                        endDate: agreementMatch[2],
+                        rentAmount: parseFloat(agreementMatch[3]) || 0
+                    };
+                }
             }
             if (currentField) fields.push(currentField);
+
+            // Fallback defaults if tenant or agreement details are not found
+            if (!tenant.name) {
+                tenant = {
+                    name: 'Unknown Tenant',
+                    father: 'Unknown',
+                    address: 'Unknown Address',
+                    tin: 'Unknown TIN',
+                    doy: 'Unknown DOY'
+                };
+            }
+            if (!agreementDetails.startDate) {
+                agreementDetails = {
+                    startDate: '01/01/2025',
+                    endDate: '31/12/2025',
+                    rentAmount: 100
+                };
+            }
 
             // Display parsed data
             const parsedDataDiv = document.getElementById('parsedData');
             const fieldsDisplay = document.getElementById('fieldsDisplay');
+            const tenantDisplay = document.getElementById('tenantDisplay');
+            const agreementDisplay = document.getElementById('agreementDisplay');
             parsedDataDiv.classList.remove('hidden');
             fieldsDisplay.innerHTML = '';
+            tenantDisplay.innerHTML = '';
+            agreementDisplay.innerHTML = '';
 
+            // Display fields and owners
             fields.forEach((field, i) => {
                 const fieldDiv = document.createElement('div');
                 fieldDiv.className = 'mb-4 p-4 border rounded';
@@ -143,27 +172,33 @@
                 fieldsDisplay.appendChild(fieldDiv);
             });
 
-            // Enable generate button
-            document.getElementById('generateButton').disabled = fields.length === 0;
+            // Display tenant info
+            tenantDisplay.innerHTML = `
+                <h3 class="font-semibold">Tenant Information</h3>
+                <p>Name: ${tenant.name}</p>
+                <p>Father: ${tenant.father}</p>
+                <p>Address: ${tenant.address}</p>
+                <p>TIN: ${tenant.tin}</p>
+                <p>DOY: ${tenant.doy}</p>
+            `;
+
+            // Display agreement details
+            agreementDisplay.innerHTML = `
+                <h3 class="font-semibold">Agreement Details</h3>
+                <p>Start Date: ${agreementDetails.startDate}</p>
+                <p>End Date: ${agreementDetails.endDate}</p>
+                <p>Rent Amount: ${agreementDetails.rentAmount} €/Ha</p>
+            `;
+
+            // Generate agreements automatically
+            generateAgreements();
         }
 
         function generateAgreements() {
             if (!fields.length) {
-                alert('No fields data available. Please upload a PDF first.');
+                alert('No fields data available. Please upload a PDF.');
                 return;
             }
-
-            const tenant = {
-                name: document.getElementById('tenantName').value,
-                father: document.getElementById('tenantFather').value,
-                address: document.getElementById('tenantAddress').value,
-                tin: document.getElementById('tenantTIN').value,
-                doy: document.getElementById('tenantDOY').value
-            };
-
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
-            const rentAmount = document.getElementById('rentAmount').value;
 
             // Merge agreements by TIN
             const agreementsByTIN = {};
@@ -190,7 +225,7 @@
 
                 // Generating agreement content
                 doc.text('ΙΔΙΩΤΙΚΟ ΣΥΜΦΩΝΗΤΙΚΟ ΑΓΡΟΜΙΣΘΩΣΗΣ', 20, 20);
-                doc.text(`Σήμερα την ${new Date(startDate).toLocaleDateString('el-GR')} στο Δημητρίτσι οι υπογράφοντες το συμφωνητικό αυτό`, 20, 30);
+                doc.text(`Σήμερα την ${agreementDetails.startDate} στο Δημητρίτσι οι υπογράφοντες το συμφωνητικό αυτό`, 20, 30);
                 doc.text(`αφενός ο/η ${agreement.owner.name} του ${agreement.owner.father}, κάτοικος ${agreement.owner.address},`, 20, 40);
                 doc.text(`Α.Φ.Μ ${agreement.owner.tin}, Δ.Ο.Υ ${agreement.owner.doy}`, 20, 50);
                 doc.text(`και αφετέρου ο/η ${tenant.name} του ${tenant.father}, επαγγέλματος αγρότης,`, 20, 60);
@@ -210,9 +245,9 @@
                 y += 10;
                 doc.text('Ο εκμισθωτής εκμισθώνει με το παρόν συμφωνητικό στο μισθωτή τους παραπάνω αγρούς, με τους εξής όρους και συμφωνίες που είναι όλοι ουσιώδεις:', 20, y);
                 y += 10;
-                doc.text(`2. ΔΙΑΡΚΕΙΑ. Η διάρκεια της παρούσας μίσθωσης ορίζεται: Αρχίζει την ${new Date(startDate).toLocaleDateString('el-GR')} και λήγει την ${new Date(endDate).toLocaleDateString('el-GR')}.`, 20, y);
+                doc.text(`2. ΔΙΑΡΚΕΙΑ. Η διάρκεια της παρούσας μίσθωσης ορίζεται: Αρχίζει την ${agreementDetails.startDate} και λήγει την ${agreementDetails.endDate}.`, 20, y);
                 y += 10;
-                doc.text(`3. ΜΙΣΘΩΜΑ. Το ετήσιο μίσθωμα ορίζεται σε ευρώ ${rentAmount}/Ha`, 20, y);
+                doc.text(`3. ΜΙΣΘΩΜΑ. Το ετήσιο μίσθωμα ορίζεται σε ευρώ ${agreementDetails.rentAmount}/Ha`, 20, y);
                 y += 10;
                 doc.text('4. ΧΡΗΣΗ. Ο μίσθιος αγρός θα χρησιμοποιηθεί αποκλειστικά για αγροτική καλλιέργεια. Απαγορεύεται απόλυτα οποιαδήποτε μετατροπή της χρήσης ή του τρόπου εκμετάλλευσης του μισθίου, η ολική ή μερική υπομίσθωσή του, ή η με οποιοδήποτε τρόπο, με ή χωρίς αντάλλαγμα παραχώρηση της χρήσης του μισθίου σε τρίτους καθώς και η πρόσληψη συνεταίρου, χωρίς την προηγούμενη έγγραφη συναίνεση του εκμισθωτή.', 20, y, { maxWidth: 170 });
                 y += 40;
