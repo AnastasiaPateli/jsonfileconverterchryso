@@ -242,7 +242,7 @@
                         new Paragraph({
                             children: [
                                 new TextRun({
-                                    text: `αφενός ο/η ${agreement.owner.full_name} του -, κάτοικος -, οδός -, αρ. -, Α.Φ.Μ ${agreement.owner.tin}, Δ.Ο.Υ ${agreement.owner.doy}`,
+                                    text: `αφενός ο/η ${agreement.owner.full_name}, κάτοικος -, οδός -, αρ. -, Α.Φ.Μ ${agreement.owner.tin}, Δ.Ο.Υ ${agreement.owner.doy}`,
                                     size: 24,
                                     font: "Arial"
                                 })
@@ -300,8 +300,6 @@
                                         new TableCell({ children: [new Paragraph(field.other_cartographic_background)] }),
                                         new TableCell({ children: [new Paragraph(field.cartographic_background)] }),
                                         new TableCell({ children: [new Paragraph(field.area_ha.toString())] }),
-                                        new TableCell({ children: [new Paragraph(field.rental_start_date)] }),
-                                        new TableCell({ children: [new Paragraph(field.rental_end_date)] })
                                     ]
                                 }))
                             ]
@@ -318,7 +316,7 @@
                         new Paragraph({
                             children: [
                                 new TextRun({
-                                    text: "2. ΔΙΑΡΚΕIΑ. Η διάρκεια της παρούσας μίσθωσης ορίζεται: Αρχίζει την 1η ΝΟΕΜΒΡΙΟΥ 2024 και λήγει την 31η ΟΚΤΩΒΡΙΟΥ 2032.",
+                                    text: "2. ΔΙΑΡΚΕIΑ. Η διάρκεια της παρούσας μίσθωσης ορίζεται: Αρχίζει την $(field.rental_start_date) και λήγει την $(field.rental_end_date).",
                                     size: 24,
                                     font: "Arial"
                                 })
