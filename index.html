@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tenancy Agreement Generator</title>
+    <title>Document Tools - Tenancy Agreement Generator & PDF Combiner</title>
     <!-- Load libraries with fallback CDN -->
     <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
     <script>
         // Fallback for docx.js
         if (!window.docx) {
@@ -21,29 +22,102 @@
         if (!window.JSZip) {
             document.write('<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/jszip.min.js"><\/script>');
         }
+        // Fallback for PDF-lib
+        if (!window.PDFLib) {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"><\/script>');
+        }
     </script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
         }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.2em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .main-container {
+            display: flex;
+            max-width: 1400px;
+            margin: 0 auto;
+            gap: 20px;
+            padding: 0 20px;
+            min-height: calc(100vh - 120px);
+        }
+        
+        .left-panel, .right-panel {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow-y: auto;
+            max-height: calc(100vh - 140px);
+        }
+        
+        .panel-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .panel-header h2 {
+            color: #333;
+            margin: 0;
+            font-size: 1.5em;
+        }
+        
+        /* Left Panel Styles (existing) */
         .upload-section, .agreements-section {
             margin-bottom: 20px;
         }
+        
         button, input[type="file"] {
             padding: 10px;
             margin: 10px 0;
             cursor: pointer;
+            border-radius: 8px;
+            border: 2px solid #667eea;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            font-weight: bold;
+            transition: all 0.3s ease;
         }
+        
+        button:hover, input[type="file"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
         .agreement {
-            border: 1px solid #ccc;
+            border: 1px solid #ddd;
             padding: 15px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
+        
         .download-btn, .download-all-btn {
-            background-color: #4CAF50;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
             color: white;
             border: none;
             padding: 8px 16px;
@@ -53,35 +127,243 @@
             font-size: 14px;
             margin: 4px 2px;
             cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
         }
+        
+        .download-btn:hover, .download-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+        
         .error {
-            color: red;
+            color: #e74c3c;
             margin: 10px 0;
+            padding: 10px;
+            background: rgba(231, 76, 60, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #e74c3c;
         }
+        
         .download-all-section {
             display: flex;
             align-items: center;
             margin-bottom: 20px;
         }
+        
         .agreement-counter {
             margin-left: 10px;
             font-size: 14px;
+            color: #666;
+        }
+        
+        /* Right Panel Styles (PDF Combiner) */
+        .pdf-drop-zone {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .pdf-drop-zone:hover {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.05);
+        }
+        
+        .pdf-drop-zone.dragover {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+            transform: scale(1.02);
+        }
+        
+        .pdf-files-list {
+            margin-bottom: 20px;
+        }
+        
+        .pdf-file-item {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            padding: 10px 15px;
+            margin: 5px 0;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .pdf-file-info {
+            flex-grow: 1;
+        }
+        
+        .pdf-file-name {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .pdf-file-size {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .remove-pdf-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            margin-left: 10px;
+        }
+        
+        .remove-pdf-btn:hover {
+            background: #c0392b;
+            transform: scale(1.1);
+        }
+        
+        .combine-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+        }
+        
+        .combine-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .combine-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+            display: none;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        
+        table th {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            font-weight: bold;
+        }
+        
+        table tr:nth-child(even) {
+            background-color: rgba(102, 126, 234, 0.05);
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+                padding: 0 10px;
+            }
+            
+            .left-panel, .right-panel {
+                max-height: none;
+            }
+            
+            .header h1 {
+                font-size: 1.5em;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="download-all-section">
-        <button class="download-all-btn" id="downloadAllBtn" style="display: none;">Download All Agreements</button>
-        <span class="agreement-counter" id="agreementCounter">Agreements: 0</span>
+    <div class="header">
+        <h1>Document Processing Tools</h1>
     </div>
-    <div class="upload-section">
-        <h2>Tenancy Agreement Generator</h2>
-        <input type="file" id="jsonFile" accept=".json">
-        <div id="error" class="error"></div>
+    
+    <div class="main-container">
+        <!-- Left Panel - Tenancy Agreement Generator -->
+        <div class="left-panel">
+            <div class="panel-header">
+                <h2>🏠 Tenancy Agreement Generator</h2>
+            </div>
+            
+            <div class="download-all-section">
+                <button class="download-all-btn" id="downloadAllBtn" style="display: none;">Download All Agreements</button>
+                <span class="agreement-counter" id="agreementCounter">Agreements: 0</span>
+            </div>
+            
+            <div class="upload-section">
+                <input type="file" id="jsonFile" accept=".json" placeholder="Select JSON file">
+                <div id="error" class="error" style="display: none;"></div>
+            </div>
+            
+            <div class="agreements-section" id="agreements"></div>
+        </div>
+        
+        <!-- Right Panel - PDF Combiner -->
+        <div class="right-panel">
+            <div class="panel-header">
+                <h2>📄 PDF Combiner</h2>
+            </div>
+            
+            <div class="pdf-drop-zone" id="pdfDropZone">
+                <div style="font-size: 48px; margin-bottom: 15px;">📁</div>
+                <p><strong>Drop PDF files here or click to browse</strong></p>
+                <p style="color: #666; font-size: 14px;">Select multiple PDF files to combine into one document</p>
+                <input type="file" id="pdfFiles" accept=".pdf" multiple style="display: none;">
+            </div>
+            
+            <div class="pdf-files-list" id="pdfFilesList"></div>
+            
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            
+            <button class="combine-btn" id="combineBtn" disabled>Combine PDFs</button>
+            
+            <div id="pdfError" class="error" style="display: none;"></div>
+        </div>
     </div>
-    <div class="agreements-section" id="agreements"></div>
 
     <script>
+        // Left Panel - Tenancy Agreement Generator (existing code)
         const jsonFileInput = document.getElementById('jsonFile');
         const agreementsDiv = document.getElementById('agreements');
         const errorDiv = document.getElementById('error');
@@ -89,21 +371,80 @@
         const agreementCounter = document.getElementById('agreementCounter');
         let agreementBlobs = [];
 
+        // Right Panel - PDF Combiner
+        const pdfDropZone = document.getElementById('pdfDropZone');
+        const pdfFileInput = document.getElementById('pdfFiles');
+        const pdfFilesList = document.getElementById('pdfFilesList');
+        const combineBtn = document.getElementById('combineBtn');
+        const pdfErrorDiv = document.getElementById('pdfError');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        let selectedPDFs = [];
+
         // Check if required libraries are loaded
         window.addEventListener('load', () => {
             if (!window.docx || !window.saveAs || !window.JSZip) {
-                errorDiv.textContent = 'Required libraries (docx.js, FileSaver.js, or JSZip) failed to load. Please try again later.';
+                showError('Required libraries (docx.js, FileSaver.js, or JSZip) failed to load. Please try again later.');
                 console.error('Library Load Failure:', { docx: !!window.docx, saveAs: !!window.saveAs, JSZip: !!window.JSZip });
+            }
+            if (!window.PDFLib) {
+                showPdfError('PDF-lib failed to load. PDF combining functionality is not available.');
+                console.error('PDF-lib Load Failure');
             }
         });
 
+        // Left Panel Event Listeners
         jsonFileInput.addEventListener('change', handleFileUpload);
+        downloadAllBtn.addEventListener('click', downloadAllAgreements);
 
+        // Right Panel Event Listeners
+        pdfDropZone.addEventListener('click', () => pdfFileInput.click());
+        pdfFileInput.addEventListener('change', handlePdfSelection);
+        combineBtn.addEventListener('click', combinePDFs);
+
+        // Drag and drop functionality
+        pdfDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            pdfDropZone.classList.add('dragover');
+        });
+
+        pdfDropZone.addEventListener('dragleave', () => {
+            pdfDropZone.classList.remove('dragover');
+        });
+
+        pdfDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            pdfDropZone.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files).filter(file => file.type === 'application/pdf');
+            if (files.length > 0) {
+                addPDFFiles(files);
+            }
+        });
+
+        // Helper functions
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function hideError() {
+            errorDiv.style.display = 'none';
+        }
+
+        function showPdfError(message) {
+            pdfErrorDiv.textContent = message;
+            pdfErrorDiv.style.display = 'block';
+        }
+
+        function hidePdfError() {
+            pdfErrorDiv.style.display = 'none';
+        }
+
+        // Left Panel Functions (existing code with modifications)
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) {
-                errorDiv.textContent = 'No file selected.';
-                console.warn('No file selected');
+                showError('No file selected.');
                 return;
             }
 
@@ -113,20 +454,19 @@
                     const data = JSON.parse(e.target.result);
                     const tenantTin = data.tin || '';
                     if (!tenantTin) {
-                        errorDiv.textContent = 'No TIN found in JSON data.';
-                        console.warn('No TIN found in JSON');
+                        showError('No TIN found in JSON data.');
                         return;
                     }
                     console.log('Tenant TIN:', tenantTin);
                     generateAgreements(data, tenantTin);
-                    errorDiv.textContent = '';
+                    hideError();
                 } catch (error) {
-                    errorDiv.textContent = 'Error parsing JSON file: ' + error.message;
+                    showError('Error parsing JSON file: ' + error.message);
                     console.error('JSON Parse Error:', error);
                 }
             };
             reader.onerror = function() {
-                errorDiv.textContent = 'Error reading file.';
+                showError('Error reading file.');
                 console.error('FileReader Error:', reader.error);
             };
             reader.readAsText(file);
@@ -134,17 +474,15 @@
 
         function generateAgreements(data, tenantTin) {
             agreementsDiv.innerHTML = '';
-            agreementBlobs = []; // Reset blobs
+            agreementBlobs = [];
             const tenant = data.applicant_detail || {};
             const fields = Array.isArray(data.field_list) ? data.field_list : [];
 
             if (!fields.length) {
-                errorDiv.textContent = 'No fields found in the JSON data.';
-                console.warn('No fields in JSON');
+                showError('No fields found in the JSON data.');
                 return;
             }
 
-            // Group fields by owner TIN and rental dates
             const agreementsByTinAndDates = {};
 
             fields.forEach(field => {
@@ -155,17 +493,17 @@
                 propertyList.forEach(property => {
                     const tin = property.tin || 'unknown_tin_' + Math.random().toString(36).substr(2, 9);
                     const fullName = property.full_name || 'Unknown Owner';
-                    // Skip if owner is unknown
+                    
                     if (tin.startsWith('unknown_tin_') || fullName === 'Unknown Owner') {
                         console.log(`Skipping field due to unknown owner: TIN=${tin}, Name=${fullName}`);
                         return;
                     }
-                    // Skip if tenant TIN matches owner TIN
+                    
                     if (tin === tenantTin) {
                         console.log(`Skipping field for TIN ${tin} as it matches tenant TIN ${tenantTin}`);
                         return;
                     }
-                    // Create a unique key based on TIN, rental_start_date, and rental_end_date
+                    
                     const rentalKey = `${tin}_${property.rental_start_date || '-'}_${property.rental_end_date || '-'}`;
                     if (!agreementsByTinAndDates[rentalKey]) {
                         agreementsByTinAndDates[rentalKey] = {
@@ -194,23 +532,17 @@
                 });
             });
 
-            console.log('Agreements by TIN and Dates:', agreementsByTinAndDates);
-
-            // Check if any valid agreements exist
             if (Object.keys(agreementsByTinAndDates).length === 0) {
-                errorDiv.textContent = 'No valid agreements generated. All fields may belong to the tenant or have invalid data.';
-                console.warn('No valid agreements generated');
+                showError('No valid agreements generated. All fields may belong to the tenant or have invalid data.');
                 downloadAllBtn.style.display = 'none';
                 agreementCounter.textContent = 'Agreements: 0';
                 return;
             }
 
-            // Update agreement counter
             const agreementCount = Object.keys(agreementsByTinAndDates).length;
             agreementCounter.textContent = `Agreements: ${agreementCount}`;
             downloadAllBtn.style.display = agreementCount > 1 ? 'block' : 'none';
 
-            // Generate agreements for each unique owner TIN and rental dates combination
             Object.values(agreementsByTinAndDates).forEach((agreement, index) => {
                 const agreementDiv = document.createElement('div');
                 agreementDiv.className = 'agreement';
@@ -220,8 +552,6 @@
                 agreementDiv.appendChild(title);
 
                 const table = document.createElement('table');
-                table.border = '1';
-                table.style.width = '100%';
                 table.innerHTML = `
                     <tr>
                         <th>Α/Α</th>
@@ -255,18 +585,17 @@
                     try {
                         generateDocx(agreement, tenant, tenantTin, false);
                     } catch (error) {
-                        errorDiv.textContent = 'Error generating document: ' + error.message;
+                        showError('Error generating document: ' + error.message);
                         console.error('Document Generation Error:', error);
                     }
                 };
                 agreementDiv.appendChild(downloadBtn);
 
-                // Generate blob for "Download All" functionality
                 try {
                     generateDocx(agreement, tenant, tenantTin, true);
                 } catch (error) {
                     console.error('Error generating blob for agreement:', error);
-                    errorDiv.textContent = 'Error preparing agreement for download all: ' + error.message;
+                    showError('Error preparing agreement for download all: ' + error.message);
                 }
 
                 agreementsDiv.appendChild(agreementDiv);
@@ -372,277 +701,3 @@
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: (index + 1).toString(), font: "Arial" })], alignment: AlignmentType.CENTER })] }),
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.community, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.location, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
-                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.atak, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
-                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.other_cartographic_background, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
-                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.cartographic_background, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
-                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.area_ha.toString(), font: "Arial" })], alignment: AlignmentType.CENTER })] })
-                                    ]
-                                }))
-                            ]
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: `2. ΧΡΟΝΟΣ ΜΙΣΘΩΣΗΣ. Η διάρκεια της μίσθωσης ορίζεται από ${rentalStartDate} μέχρι ${rentalEndDate}.`,
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "3. ΜΙΣΘΩΜΑ. Το μίσθωμα ορίζεται σε 0 ευρώ, καθόσον πρόκειται για δωρεάν παραχώρηση χρήσης, όπως προβλέπεται από το άρθρο 10 παρ. 3 του Ν. 4067/2012.",
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "4. ΣΚΟΠΟΣ ΜΙΣΘΩΣΗΣ. Η εκμίσθωση γίνεται για την καλλιέργεια των παραπάνω αγρών, αποκλειστικά από το μισθωτή, με σκοπό την εκτέλεση των γεωργικών του δραστηριοτήτων, όπως προβλέπονται από την κείμενη νομοθεσία.",
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "5. ΚΑΛΗ ΧΡΗΣΗ ΤΟΥ ΜΙΣΘΙΟΥ. Ο μισθωτή υποχρεούται να κάνει καλή χρήση του μισθίου, να το εκμεταλλεύεται με επιμέλεια και σύμφωνα με τον προορισμό του και να το διατηρεί κατάλληλο για τη συμφωνημένη χρήση, κάνοντας με αποκλειστική δαπάνη και επιμέλειά του κάθε είδους τακτικές ή έκτακτες επισκευές ή βελτιώσεις, διαφορετικά, ευθύνεται για αποζημίωση για τις φθορές και τις βλάβες που προξενήθηκαν σ' αυτό.",
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "Το παρόν μισθωτήριο διαβάστηκε και έγινε αποδεκτό από τούς συμβαλλομένους, υπογράφη από αυτούς και ο καθένας έλαβε από ένα όμοιο αντίτυπο.",
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "                                   ",
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "                                   ",
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "ΟΙ ΣΥΜΒΑΛΛΟΜΕΝΟΙ",
-                                    bold: true,
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Table({
-                            width: { size: 100, type: WidthType.PERCENTAGE },
-                            borders: {
-                                top: { style: BorderStyle.NONE, size: 0 },
-                                bottom: { style: BorderStyle.NONE, size: 0 },
-                                left: { style: BorderStyle.NONE, size: 0 },
-                                right: { style: BorderStyle.NONE, size: 0 }
-                            },
-                            rows: [
-                                new TableRow({
-                                    children: [
-                                        new TableCell({
-                                            width: { size: 50, type: WidthType.PERCENTAGE },
-                                            children: [
-                                                new Paragraph({
-                                                    children: [
-                                                        new TextRun({
-                                                            text: `ΘΕΩΡΗΘΗΚΕ ΤΟ ΓΝΗΣΙΟ ΤΗΣ ΥΠΟΓΡΑΦΗΣ
-                                                            ΕΚΜΙΣΘΩΤΗΣ ${agreement.owner.full_name}\n
-                                                                με Α.Δ.Τ.:________________`,
-                                                            size: 20,
-                                                            font: "Arial"
-                                                        })
-                                                    ],
-                                                    alignment: AlignmentType.CENTER
-                                                })
-                                            ]
-                                        }),
-                                        new TableCell({
-                                            width: { size: 50, type: WidthType.PERCENTAGE },
-                                            children: [
-                                                new Paragraph({
-                                                    children: [
-                                                        new TextRun({
-                                                            text: `ΘΕΩΡΗΘΗΚΕ ΤΟ ΓΝΗΣΙΟ ΤΗΣ ΥΠΟΓΡΑΦΗΣ
-                                                            ΜΙΣΘΩΤΗΣ ${tenant.first_name || 'Unknown'} ${tenant.last_name || 'Tenant'} ${tenant.father_name ? 'του ' + tenant.father_name : ''}\n 
-                                                                με Α.Δ.Τ.:${tenant.identity_number || '-'}`,
-                                                            size: 20,
-                                                            font: "Arial"
-                                                        })
-                                                    ],
-                                                    alignment: AlignmentType.CENTER
-                                                })
-                                            ]
-                                        })
-                                    ]
-                                })
-                            ]
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "                                   ",
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "                                   ",
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "                                   ",
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "                                   ",
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "                                   ",
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "                                   ",
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "                                   ",
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "Για το γνήσιο των υπογραφών",
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "ΗΜΕΡΟΜΗΝΙΑ: 1η Νοεμβρίου 2024",
-                                    size: 20,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        })
-                    ]
-                }]
-            });
-
-            return docx.Packer.toBlob(doc).then(blob => {
-                const filename = `Agreement_${agreement.owner.tin}_${agreement.owner.full_name}_${agreement.rental_start_date || 'no_date'}.docx`;
-                if (storeBlob) {
-                    agreementBlobs.push({ blob, filename });
-                } else {
-                    saveAs(blob, filename);
-                }
-                console.log('Document generated successfully:', filename);
-            }).catch(error => {
-                console.error('Document Generation Error:', error);
-                throw error;
-            });
-        }
-
-        function downloadAllAgreements() {
-            if (!window.JSZip || agreementBlobs.length === 0) {
-                errorDiv.textContent = 'Unable to download all agreements. JSZip not loaded or no agreements generated.';
-                console.error('Download All Failure:', { JSZip: !!window.JSZip, agreementBlobsLength: agreementBlobs.length });
-                return;
-            }
-
-            const zip = new JSZip();
-            agreementBlobs.forEach((item) => {
-                zip.file(item.filename, item.blob);
-            });
-
-            zip.generateAsync({ type: 'blob' }).then(content => {
-                saveAs(content, `All_Agreements_${new Date().toISOString().slice(0, 10)}.zip`);
-                console.log('All agreements downloaded as ZIP.');
-                agreementBlobs = []; // Clear blobs after download
-                downloadAllBtn.style.display = 'none';
-                agreementCounter.textContent = 'Agreements: 0';
-            }).catch(error => {
-                errorDiv.textContent = 'Error creating ZIP file: ' + error.message;
-                console.error('ZIP Generation Error:', error);
-            });
-        }
-
-        downloadAllBtn.addEventListener('click', downloadAllAgreements);
-    </script>
-</body>
-</html>
