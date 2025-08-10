@@ -701,3 +701,426 @@
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: (index + 1).toString(), font: "Arial" })], alignment: AlignmentType.CENTER })] }),
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.community, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.location, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.atak, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.other_cartographic_background, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.cartographic_background, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.area_ha.toString(), font: "Arial" })], alignment: AlignmentType.CENTER })] })
+                                    ]
+                                }))
+                            ]
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: `2. ΧΡΟΝΟΣ ΜΙΣΘΩΣΗΣ. Η διάρκεια της μίσθωσης ορίζεται από ${rentalStartDate} μέχρι ${rentalEndDate}.`,
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "3. ΜΙΣΘΩΜΑ. Το μίσθωμα ορίζεται σε 0 ευρώ, καθόσον πρόκειται για δωρεάν παραχώρηση χρήσης, όπως προβλέπεται από το άρθρο 10 παρ. 3 του Ν. 4067/2012.",
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "4. ΣΚΟΠΟΣ ΜΙΣΘΩΣΗΣ. Η εκμίσθωση γίνεται για την καλλιέργεια των παραπάνω αγρών, αποκλειστικά από το μισθωτή, με σκοπό την εκτέλεση των γεωργικών του δραστηριοτήτων, όπως προβλέπονται από την κείμενη νομοθεσία.",
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "5. ΚΑΛΗ ΧΡΗΣΗ ΤΟΥ ΜΙΣΘΙΟΥ. Ο μισθωτή υποχρεούται να κάνει καλή χρήση του μισθίου, να το εκμεταλλεύεται με επιμέλεια και σύμφωνα με τον προορισμό του και να το διατηρεί κατάλληλο για τη συμφωνημένη χρήση, κάνοντας με αποκλειστική δαπάνη και επιμέλειά του κάθε είδους τακτικές ή έκτακτες επισκευές ή βελτιώσεις, διαφορετικά, ευθύνεται για αποζημίωση για τις φθορές και τις βλάβες που προξενήθηκαν σ' αυτό.",
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "Το παρόν μισθωτήριο διαβάστηκε και έγινε αποδεκτό από τούς συμβαλλομένους, υπογράφη από αυτούς και ο καθένας έλαβε από ένα όμοιο αντίτυπο.",
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "                                   ",
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "                                   ",
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "ΟΙ ΣΥΜΒΑΛΛΟΜΕΝΟΙ",
+                                    bold: true,
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Table({
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                            borders: {
+                                top: { style: BorderStyle.NONE, size: 0 },
+                                bottom: { style: BorderStyle.NONE, size: 0 },
+                                left: { style: BorderStyle.NONE, size: 0 },
+                                right: { style: BorderStyle.NONE, size: 0 }
+                            },
+                            rows: [
+                                new TableRow({
+                                    children: [
+                                        new TableCell({
+                                            width: { size: 50, type: WidthType.PERCENTAGE },
+                                            children: [
+                                                new Paragraph({
+                                                    children: [
+                                                        new TextRun({
+                                                            text: `ΘΕΩΡΗΘΗΚΕ ΤΟ ΓΝΗΣΙΟ ΤΗΣ ΥΠΟΓΡΑΦΗΣ
+                                                            ΕΚΜΙΣΘΩΤΗΣ ${agreement.owner.full_name}\n
+                                                                με Α.Δ.Τ.:________________`,
+                                                            size: 20,
+                                                            font: "Arial"
+                                                        })
+                                                    ],
+                                                    alignment: AlignmentType.CENTER
+                                                })
+                                            ]
+                                        }),
+                                        new TableCell({
+                                            width: { size: 50, type: WidthType.PERCENTAGE },
+                                            children: [
+                                                new Paragraph({
+                                                    children: [
+                                                        new TextRun({
+                                                            text: `ΘΕΩΡΗΘΗΚΕ ΤΟ ΓΝΗΣΙΟ ΤΗΣ ΥΠΟΓΡΑΦΗΣ
+                                                            ΜΙΣΘΩΤΗΣ ${tenant.first_name || 'Unknown'} ${tenant.last_name || 'Tenant'} ${tenant.father_name ? 'του ' + tenant.father_name : ''}\n 
+                                                                με Α.Δ.Τ.:${tenant.identity_number || '-'}`,
+                                                            size: 20,
+                                                            font: "Arial"
+                                                        })
+                                                    ],
+                                                    alignment: AlignmentType.CENTER
+                                                })
+                                            ]
+                                        })
+                                    ]
+                                })
+                            ]
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "                                   ",
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "                                   ",
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "                                   ",
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "                                   ",
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "                                   ",
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "                                   ",
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "                                   ",
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "Για το γνήσιο των υπογραφών",
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "ΗΜΕΡΟΜΗΝΙΑ: 1η Νοεμβρίου 2024",
+                                    size: 20,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        })
+                    ]
+                }]
+            });
+
+            return docx.Packer.toBlob(doc).then(blob => {
+                const filename = `Agreement_${agreement.owner.tin}_${agreement.owner.full_name}_${agreement.rental_start_date || 'no_date'}.docx`;
+                if (storeBlob) {
+                    agreementBlobs.push({ blob, filename });
+                } else {
+                    saveAs(blob, filename);
+                }
+                console.log('Document generated successfully:', filename);
+            }).catch(error => {
+                console.error('Document Generation Error:', error);
+                throw error;
+            });
+        }
+
+        function downloadAllAgreements() {
+            if (!window.JSZip || agreementBlobs.length === 0) {
+                showError('Unable to download all agreements. JSZip not loaded or no agreements generated.');
+                console.error('Download All Failure:', { JSZip: !!window.JSZip, agreementBlobsLength: agreementBlobs.length });
+                return;
+            }
+
+            const zip = new JSZip();
+            agreementBlobs.forEach((item) => {
+                zip.file(item.filename, item.blob);
+            });
+
+            zip.generateAsync({ type: 'blob' }).then(content => {
+                saveAs(content, `All_Agreements_${new Date().toISOString().slice(0, 10)}.zip`);
+                console.log('All agreements downloaded as ZIP.');
+                agreementBlobs = [];
+                downloadAllBtn.style.display = 'none';
+                agreementCounter.textContent = 'Agreements: 0';
+            }).catch(error => {
+                showError('Error creating ZIP file: ' + error.message);
+                console.error('ZIP Generation Error:', error);
+            });
+        }
+
+        // Right Panel Functions - PDF Combiner
+        function handlePdfSelection(event) {
+            const files = Array.from(event.target.files);
+            if (files.length > 0) {
+                addPDFFiles(files);
+            }
+        }
+
+        function addPDFFiles(files) {
+            files.forEach(file => {
+                if (file.type === 'application/pdf') {
+                    selectedPDFs.push(file);
+                }
+            });
+            updatePdfFilesList();
+            updateCombineButton();
+        }
+
+        function updatePdfFilesList() {
+            pdfFilesList.innerHTML = '';
+            
+            if (selectedPDFs.length === 0) {
+                pdfFilesList.innerHTML = '<p style="color: #666; text-align: center; font-style: italic;">No PDF files selected</p>';
+                return;
+            }
+
+            selectedPDFs.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'pdf-file-item';
+                
+                const fileInfo = document.createElement('div');
+                fileInfo.className = 'pdf-file-info';
+                
+                const fileName = document.createElement('div');
+                fileName.className = 'pdf-file-name';
+                fileName.textContent = file.name;
+                
+                const fileSize = document.createElement('div');
+                fileSize.className = 'pdf-file-size';
+                fileSize.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+                
+                fileInfo.appendChild(fileName);
+                fileInfo.appendChild(fileSize);
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-pdf-btn';
+                removeBtn.innerHTML = '×';
+                removeBtn.title = 'Remove file';
+                removeBtn.onclick = () => removePdfFile(index);
+                
+                fileItem.appendChild(fileInfo);
+                fileItem.appendChild(removeBtn);
+                pdfFilesList.appendChild(fileItem);
+            });
+        }
+
+        function removePdfFile(index) {
+            selectedPDFs.splice(index, 1);
+            updatePdfFilesList();
+            updateCombineButton();
+        }
+
+        function updateCombineButton() {
+            combineBtn.disabled = selectedPDFs.length < 2;
+            combineBtn.textContent = selectedPDFs.length < 2 ? 
+                'Select at least 2 PDFs to combine' : 
+                `Combine ${selectedPDFs.length} PDFs`;
+        }
+
+        function showProgress(percent) {
+            progressBar.style.display = 'block';
+            progressFill.style.width = `${percent}%`;
+        }
+
+        function hideProgress() {
+            progressBar.style.display = 'none';
+            progressFill.style.width = '0%';
+        }
+
+        async function combinePDFs() {
+            if (!window.PDFLib || selectedPDFs.length < 2) {
+                showPdfError('PDF-lib not available or not enough files selected.');
+                return;
+            }
+
+            try {
+                hidePdfError();
+                combineBtn.disabled = true;
+                combineBtn.textContent = 'Combining PDFs...';
+                showProgress(10);
+
+                const { PDFDocument } = PDFLib;
+                const combinedPdf = await PDFDocument.create();
+                
+                for (let i = 0; i < selectedPDFs.length; i++) {
+                    const file = selectedPDFs[i];
+                    showProgress(10 + (i / selectedPDFs.length) * 80);
+                    
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await PDFDocument.load(arrayBuffer);
+                    const pages = await combinedPdf.copyPages(pdf, pdf.getPageIndices());
+                    
+                    pages.forEach(page => combinedPdf.addPage(page));
+                }
+
+                showProgress(95);
+                
+                const combinedPdfBytes = await combinedPdf.save();
+                const blob = new Blob([combinedPdfBytes], { type: 'application/pdf' });
+                
+                const filename = `Combined_PDF_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.pdf`;
+                saveAs(blob, filename);
+                
+                showProgress(100);
+                
+                // Reset after successful combination
+                setTimeout(() => {
+                    hideProgress();
+                    selectedPDFs = [];
+                    updatePdfFilesList();
+                    updateCombineButton();
+                    combineBtn.textContent = 'Select at least 2 PDFs to combine';
+                    
+                    // Show success message
+                    const successMsg = document.createElement('div');
+                    successMsg.style.cssText = `
+                        background: rgba(76, 175, 80, 0.1);
+                        border: 1px solid #4CAF50;
+                        border-radius: 8px;
+                        padding: 15px;
+                        margin: 15px 0;
+                        color: #2e7d32;
+                        text-align: center;
+                        font-weight: bold;
+                    `;
+                    successMsg.textContent = `✅ Successfully combined ${selectedPDFs.length} PDFs!`;
+                    pdfFilesList.appendChild(successMsg);
+                    
+                    setTimeout(() => {
+                        if (successMsg.parentNode) {
+                            successMsg.parentNode.removeChild(successMsg);
+                        }
+                    }, 3000);
+                }, 500);
+                
+            } catch (error) {
+                console.error('PDF Combination Error:', error);
+                showPdfError('Error combining PDFs: ' + error.message);
+                hideProgress();
+                combineBtn.disabled = false;
+                updateCombineButton();
+            }
+        }
