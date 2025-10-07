@@ -90,7 +90,7 @@
         const downloadSingleBtn = document.getElementById('downloadSingleBtn');
         const agreementCounter = document.getElementById('agreementCounter');
         let agreementBlobs = [];
-        let allAgreementsData = []; // Store agreements for single document
+        let allAgreementsData = [];
 
         // Check if required libraries are loaded
         window.addEventListener('load', () => {
@@ -135,41 +135,58 @@
             reader.readAsText(file);
         }
 
+        function getKaek(propertyList) {
+            if (!propertyList || !Array.isArray(propertyList) || propertyList.length === 0) {
+                console.warn('Invalid or empty field_property_list:', propertyList);
+                return '-';
+            }
+            // Check all objects in propertyList for a valid kaek
+            for (const property of propertyList) {
+                if (property.kaek !== undefined && property.kaek !== null && property.kaek !== '') {
+                    return property.kaek;
+                }
+            }
+            console.warn('No valid kaek found in field_property_list:', propertyList);
+            return '-';
+        }
+
         function generateAgreements(data, tenantTin) {
             agreementsDiv.innerHTML = '';
-            agreementBlobs = []; // Reset blobs
-            allAgreementsData = []; // Reset agreements data
+            agreementBlobs = [];
+            allAgreementsData = [];
             const tenant = data.applicant_detail || {};
             const fields = Array.isArray(data.field_list) ? data.field_list : [];
 
             if (!fields.length) {
                 errorDiv.textContent = 'No fields found in the JSON data.';
-                console.warn('No fields in JSON');
+                console.warn('No fields in JSON:', data.field_list);
                 return;
             }
 
-            // Group fields by owner TIN and rental dates
+            console.log('Processing fields:', fields.length);
             const agreementsByTinAndDates = {};
 
-            fields.forEach(field => {
+            fields.forEach((field, fieldIndex) => {
                 const fieldInfo = field.field_info || {};
                 const propertyList = Array.isArray(field.field_property_list) ? field.field_property_list : [];
                 const geospatialData = field.field_geospatial_data || {};
 
-                propertyList.forEach(property => {
+                if (!propertyList.length) {
+                    console.warn(`Field ${field.id || fieldIndex} has no field_property_list, skipping.`);
+                    return;
+                }
+
+                propertyList.forEach((property, propIndex) => {
                     const tin = property.tin || 'unknown_tin_' + Math.random().toString(36).substr(2, 9);
                     const fullName = property.full_name || 'Unknown Owner';
-                    // Skip if owner is unknown
                     if (tin.startsWith('unknown_tin_') || fullName === 'Unknown Owner') {
-                        console.log(`Skipping field due to unknown owner: TIN=${tin}, Name=${fullName}`);
+                        console.warn(`Skipping property in field ${field.id || fieldIndex} due to unknown owner: TIN=${tin}, Name=${fullName}`);
                         return;
                     }
-                    // Skip if tenant TIN matches owner TIN
                     if (tin === tenantTin) {
-                        console.log(`Skipping field for TIN ${tin} as it matches tenant TIN ${tenantTin}`);
+                        console.warn(`Skipping property in field ${field.id || fieldIndex} for TIN ${tin} as it matches tenant TIN ${tenantTin}`);
                         return;
                     }
-                    // Create a unique key based on TIN, rental_start_date, and rental_end_date
                     const rentalKey = `${tin}_${property.rental_start_date || '-'}_${property.rental_end_date || '-'}`;
                     if (!agreementsByTinAndDates[rentalKey]) {
                         agreementsByTinAndDates[rentalKey] = {
@@ -188,6 +205,7 @@
                         community: geospatialData.community_code || 'Unknown',
                         location: fieldInfo.location || 'Unknown',
                         atak: property.atak || '-',
+                        kaek: getKaek([property]) || '-', // Pass only the current property to getKaek
                         other_cartographic_background: fieldInfo.other_cartographic_background || '-',
                         cartographic_background: geospatialData.cartographic_background || '-',
                         area_ha: property.area_participation_atak || '0',
@@ -195,14 +213,14 @@
                         rental_end_date: property.rental_end_date || '-',
                         property_tin: property.tin
                     });
+                    console.log(`Added field to agreement: TIN=${tin}, Field=${field.id || fieldIndex}, PropIndex=${propIndex}, KAEK=${getKaek([property])}`);
                 });
             });
 
-            console.log('Agreements by TIN and Dates:', agreementsByTinAndDates);
+            console.log('Generated agreements:', Object.keys(agreementsByTinAndDates).length, agreementsByTinAndDates);
 
-            // Check if any valid agreements exist
             if (Object.keys(agreementsByTinAndDates).length === 0) {
-                errorDiv.textContent = 'No valid agreements generated. All fields may belong to the tenant or have invalid data.';
+                errorDiv.textContent = 'No valid agreements generated. All fields may belong to the tenant, have invalid owner data, or lack valid field_property_list.';
                 console.warn('No valid agreements generated');
                 downloadAllBtn.style.display = 'none';
                 downloadSingleBtn.style.display = 'none';
@@ -210,13 +228,11 @@
                 return;
             }
 
-            // Update agreement counter
             const agreementCount = Object.keys(agreementsByTinAndDates).length;
             agreementCounter.textContent = `Agreements: ${agreementCount}`;
             downloadAllBtn.style.display = agreementCount > 1 ? 'block' : 'none';
             downloadSingleBtn.style.display = agreementCount > 0 ? 'block' : 'none';
 
-            // Generate agreements for each unique owner TIN and rental dates combination
             Object.values(agreementsByTinAndDates).forEach((agreement, index) => {
                 const agreementDiv = document.createElement('div');
                 agreementDiv.className = 'agreement';
@@ -234,6 +250,7 @@
                         <th>ΚΟΙΝΟΤΗΤΑ (κωδ.)</th>
                         <th>ΤΟΠΟΘΕΣΙΑ</th>
                         <th>Α.Τ.Α.Κ.</th>
+                        <th>Κ.Α.Ε.Κ.</th>
                         <th>ΑΡ.ΚΤΗΜ.ΤΕΜ.</th>
                         <th>ΧΑΡΤΟΓΡΑΦΙΚΟ</th>
                         <th>ΕΚΤΑΣΗ (Ha)</th>
@@ -246,6 +263,7 @@
                         <td>${field.community}</td>
                         <td>${field.location}</td>
                         <td>${field.atak}</td>
+                        <td>${field.kaek}</td>
                         <td>${field.other_cartographic_background}</td>
                         <td>${field.cartographic_background}</td>
                         <td>${field.area_ha}</td>
@@ -267,7 +285,6 @@
                 };
                 agreementDiv.appendChild(downloadBtn);
 
-                // Generate blob for "Download All" functionality
                 try {
                     generateDocx(agreement, tenant, tenantTin, true);
                 } catch (error) {
@@ -275,10 +292,10 @@
                     errorDiv.textContent = 'Error preparing agreement for download all: ' + error.message;
                 }
 
-                // Store agreement data for single document
                 allAgreementsData.push({ agreement, tenant, tenantTin });
 
                 agreementsDiv.appendChild(agreementDiv);
+                console.log(`Rendered agreement ${index + 1} for ${agreement.owner.full_name}`);
             });
         }
 
@@ -294,7 +311,6 @@
             const rentalEndDate = agreement.rental_end_date !== '-' ? 
                 new Date(agreement.rental_end_date).toLocaleDateString('el-GR', { day: 'numeric', month: 'long', year: 'numeric' }) : '-';
 
-            // Handle invalid dates
             if (rentalStartDate === 'Invalid Date') {
                 throw new Error('Invalid rental start date in agreement data.');
             }
@@ -323,7 +339,7 @@
                         new Paragraph({
                             children: [
                                 new TextRun({
-                                    text: `Σήμερα την ${rentalStartDate} στο Δημητρίτσι οι υπογράφοντες το συμφωνητικό αυτό`,
+                                    text: `Σήμερα την ${rentalStartDate} στο Χρυσό οι υπογράφοντες το συμφωνητικό αυτό:`,
                                     size: 22,
                                     font: "Arial"
                                 })
@@ -333,7 +349,7 @@
                         new Paragraph({
                             children: [
                                 new TextRun({
-                                    text: `αφενός ο/η ${agreement.owner.full_name}, κάτοικος -, οδός -, αρ. -, Α.Φ.Μ ${agreement.owner.tin}, Δ.Ο.Υ ${agreement.owner.doy}`,
+                                    text: `1. ο/η ${agreement.owner.full_name}, με Α.Φ.Μ ${agreement.owner.tin} ως εκμισθωτής και`,
                                     size: 22,
                                     font: "Arial"
                                 })
@@ -343,7 +359,7 @@
                         new Paragraph({
                             children: [
                                 new TextRun({
-                                    text: `και αφετέρου ο/η ${tenant.first_name || 'Unknown'} ${tenant.last_name || 'Tenant'} ${tenant.father_name ? 'του ' + tenant.father_name : ''}, επαγγέλματος αγρότης, κάτοικος 62200, οδός -, αρ. -, Α.Φ.Μ ${tenantTin}, Δ.Ο.Υ Α Σερρών`,
+                                    text: `2. ο/η ${tenant.first_name || 'Unknown'} ${tenant.last_name || 'Tenant'} ${tenant.father_name ? 'του ' + tenant.father_name : ''}, με Α.Φ.Μ ${tenantTin}, ως μισθωτής`,
                                     size: 22,
                                     font: "Arial"
                                 })
@@ -363,7 +379,8 @@
                         new Paragraph({
                             children: [
                                 new TextRun({
-                                    text: "1. ΜΙΣΘΙΟ. Ο πρώτος συμβαλλόμενος (\"εκμισθωτή\") έχει στην αποκλειστική κυριότητα, νομή και κατοχή του τους κάτωθι αγρούς:",
+                                    text: "1. ΣΤΟΙΧΙΕΑ ΜΙΣΘΩΣΗΣ: ΜΙΣΘΩΣΗΣ:Ο Εκμισθωτής παραχωρεί στον μισθωτή τη χρήση και
+εκμετάλλευση του/των αγροτεμαχίου/ων με τα εξής στοιχεία:",
                                     size: 22,
                                     font: "Arial"
                                 })
@@ -378,9 +395,10 @@
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Α/Α", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 5, type: WidthType.PERCENTAGE } }),
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΚΟΙΝΟΤΗΤΑ", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΤΟΠΟΘΕΣΙΑ", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 20, type: WidthType.PERCENTAGE } }),
-                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Α.Τ.Α.Κ.", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 20, type: WidthType.PERCENTAGE } }),
-                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΑΡ.ΚΤΗΜ.ΤΕΜ.", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
-                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΧΑΡΤΟΓΡΑΦΙΚΟ", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Α.Τ.Α.Κ.", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Κ.Α.Ε.Κ.", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΑΡ.ΚΤΗΜ.ΤΕΜ.", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 10, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΧΑΡΤΟΓΡΑΦΙΚΟ", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 10, type: WidthType.PERCENTAGE } }),
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΕΚΤΑΣΗ (Ha)", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 10, type: WidthType.PERCENTAGE } })
                                     ]
                                 }),
@@ -390,6 +408,7 @@
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.community, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.location, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.atak, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.kaek, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.other_cartographic_background, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.cartographic_background, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
                                         new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.area_ha.toString(), font: "Arial" })], alignment: AlignmentType.CENTER })] })
@@ -400,7 +419,7 @@
                         new Paragraph({
                             children: [
                                 new TextRun({
-                                    text: "Ο εκμισθωτής εκμισθώνει με το παρόν συμφωνητικό στο μισθωτή τους παραπάνω αγρούς, με τους εξής όρους και συμφωνίες που είναι όλοι ουσιώδεις:",
+                                    text: `2. ΔΙΑΡΚΕΙΑ ΜΙΣΘΩΣΗΣ: Η μίσθωση αρχίζει από ${rentalStartDate} και λήγει την ${rentalEndDate} σύμφωνα με το άρθρο 620 ΑΚ, με δυνατότητα παράτασης κατόπιν συμφωνίας.`,
                                     size: 22,
                                     font: "Arial"
                                 })
@@ -410,7 +429,9 @@
                         new Paragraph({
                             children: [
                                 new TextRun({
-                                    text: `2. ΧΡΟΝΟΣ ΜΙΣΘΩΣΗΣ. Η διάρκεια της μίσθωσης ορίζεται από ${rentalStartDate} μέχρι ${rentalEndDate}.`,
+                                    text: "3. ΜΙΣΘΩΜΑ:Το μίσθωμα είναι ποσοστιαίο % και ορίζεται όπως δηλώνεται ως δαπάνη στο Έντυπο Ε3 του μισθωτή . Το μίσθωμα για τον εκμισθωτή δεν μπορεί να είναι μικρότερο από τα τεκμαρτά εισοδήματα, όπως ορίζονται στο άρθρο 40 του Ν. 4172/2013 (ΦΕΚ) και
+δηλώνεται στο Έντυπο Ε2 της ΑΑΔΕ. Σε περίπτωση δωρεάν παραχώρησης (χρησιδανείου), π.χ. από γονέα σε τέκνο, σύζυγο σε σύζυγο ή αμοιβαία ανταλλαγή χρήσης, η παραχώρηση γίνεται δωρεάν ως χρησιδάνειο (άρθρο 810 ΑΚ), χωρίς χρηματικό ή άλλο αντάλλαγμα, και
+δεν υπολογίζεται τεκμαρτό εισόδημα, εφόσον το αγροτεμάχιο χρησιμοποιείται για αγροτική δραστηριότητα (άρθρο 39 παρ. 4 Ν. 4172/2013). Αλλιώς, το τεκμαρτό εισόδημα είναι 3% της αντικειμενικής αξίας.",
                                     size: 22,
                                     font: "Arial"
                                 })
@@ -420,7 +441,9 @@
                         new Paragraph({
                             children: [
                                 new TextRun({
-                                    text: "3. ΜΙΣΘΩΜΑ. Το μίσθωμα ορίζεται σε 0 ευρώ, καθόσον πρόκειται για δωρεάν παραχώρηση χρήσης, όπως προβλέπεται από το άρθρο 10 παρ. 3 του Ν. 4067/2012.",
+                                    text: "4. ΣΚΟΠΟΣ ΜΙΣΘΩΣΗΣ: Η μίσθωση συνάπτεται με σκοπό την καλλιέργεια του/των αγροτεμαχίου/ων από τον μισθωτή για την εκτέλεση γεωργικών δραστηριοτήτων, σύμφωνα με την ισχύουσα νομοθεσία. Επιπλέον, η μίσθωση παρέχει τη δυνατότητα στον μισθωτή να
+υποβάλει Ενιαία Αίτηση Ενίσχυσης (ΕΑΕ) μέσω του ΟΠΕΚΕΠΕ, για την ενεργοποίηση δικαιωμάτων βασικής ενίσχυσης και συναφών ενισχύσεων της Κοινής Αγροτικής Πολιτικής (ΚΑΠ) 2023-2027, σύμφωνα με τον Καν. ΕΕ 1307/2013 και τον Ν. 4684/2020. Υπεκμίσθωση
+του αγροτεμαχίου επιτρέπεται μόνο με προηγούμενη έγγραφη συναίνεση του εκμισθωτή, σύμφωνα με το άρθρο 624 ΑΚ.",
                                     size: 22,
                                     font: "Arial"
                                 })
@@ -430,7 +453,7 @@
                         new Paragraph({
                             children: [
                                 new TextRun({
-                                    text: "4. ΣΚΟΠΟΣ ΜΙΣΘΩΣΗΣ. Η εκμίσθωση γίνεται για την καλλιέργεια των παραπάνω αγρών, αποκλειστικά από το μισθωτή, με σκοπό την εκτέλεση των γεωργικών του δραστηριοτήτων, όπως προβλέπονται από την κείμενη νομοθεσία.",
+                                    text: "5. ΥΠΟΧΡΕΩΣΕΙΣ ΜΙΣΘΩΤΗ - ΚΑΛΗ ΧΡΗΣΗ ΤΟΥ ΜΙΣΘΙΟΥ:Ο Μισθωτής υποχρεούται να χρησιμοποιεί το μίσθιο με επιμέλεια, σύμφωνα με τον προορισμό του, και να το διατηρεί σε κατάσταση κατάλληλη για τη συμφωνημένη χρήση.",
                                     size: 22,
                                     font: "Arial"
                                 })
@@ -440,17 +463,8 @@
                         new Paragraph({
                             children: [
                                 new TextRun({
-                                    text: "5. ΚΑΛΗ ΧΡΗΣΗ ΤΟΥ ΜΙΣΘΙΟΥ. Ο μισθωτή υποχρεούται να κάνει καλή χρήση του μισθίου, να το εκμεταλλεύεται με επιμέλεια και σύμφωνα με τον προορισμό του και να το διατηρεί κατάλληλο για τη συμφωνημένη χρήση, κάνοντας με αποκλειστική δαπάνη και επιμέλειά του κάθε είδους τακτικές ή έκτακτες επισκευές ή βελτιώσεις, διαφορετικά, ευθύνεται για αποζημίωση για τις φθορές και τις βλάβες που προξενήθηκαν σ' αυτό.",
-                                    size: 22,
-                                    font: "Arial"
-                                })
-                            ],
-                            alignment: AlignmentType.JUSTIFIED
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text: "Το παρόν μισθωτήριο διαβάστηκε και έγινε αποδεκτό από τούς συμβαλλομένους, υπογράφη από αυτούς και ο καθένας έλαβε από ένα όμοιο αντίτυπο.",
+                                    text: "6. ΤΕΛΙΚΕΣ ΔΙΑΤΑΞΕΙΣ: Το παρόν συμφωνητικό διαβάστηκε και έγινε αμοιβαία αποδεκτό
+από τους συμβαλλόμενους. Κάθε συμβαλλόμενος έλαβε ένα (1) όμοιο αντίτυπο, το οποίο έχει πλήρη νομική ισχύ.",
                                     size: 22,
                                     font: "Arial"
                                 })
@@ -626,6 +640,17 @@
                                 })
                             ],
                             alignment: AlignmentType.JUSTIFIED
+                        }),
+                          new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: `ΥΠΟΣΗΜΕΙΩΣΗ: Το ποσό του μισθώματος δύναται να αναζητηθεί στο Έντυπο Ε3 του μισθωτή, όπως
+υποβάλλεται στην Ανεξάρτητη Αρχή Δημοσίων Εσόδων (ΑΑΔΕ).`,
+                                    size: 20,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
                         })
                     ]
                 }]
@@ -652,7 +677,7 @@
                 return;
             }
 
-            const { Document, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, PageBreak } = docx;
+            const { Document, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle } = docx;
 
             const doc = new Document({
                 sections: [{
@@ -688,7 +713,7 @@
                             new Paragraph({
                                 children: [
                                     new TextRun({
-                                        text: `Σήμερα την ${rentalStartDate} στο Χρυσό οι υπογράφοντες το συμφωνητικό αυτό`,
+                                        text: `Σήμερα την ${rentalStartDate} στο Χρυσό οι υπογράφοντες το συμφωνητικό αυτό:`,
                                         size: 22,
                                         font: "Arial"
                                     })
@@ -698,7 +723,7 @@
                             new Paragraph({
                                 children: [
                                     new TextRun({
-                                        text: `αφενός ο/η ${agreement.owner.full_name}, κάτοικος -, οδός -, αρ. -, Α.Φ.Μ ${agreement.owner.tin}, Δ.Ο.Υ ${agreement.owner.doy}`,
+                                        text: `1. ο/η ${agreement.owner.full_name}, με Α.Φ.Μ ${agreement.owner.tin} ως εκμισθωτής και`,
                                         size: 22,
                                         font: "Arial"
                                     })
@@ -708,7 +733,7 @@
                             new Paragraph({
                                 children: [
                                     new TextRun({
-                                        text: `και αφετέρου ο/η ${tenant.first_name || 'Unknown'} ${tenant.last_name || 'Tenant'} ${tenant.father_name ? 'του ' + tenant.father_name : ''}, επαγγέλματος αγρότης, κάτοικος 62200, οδός -, αρ. -, Α.Φ.Μ ${tenantTin}, Δ.Ο.Υ Α Σερρών`,
+                                        text: `2. ο/η ${tenant.first_name || 'Unknown'} ${tenant.last_name || 'Tenant'} ${tenant.father_name ? 'του ' + tenant.father_name : ''}, με Α.Φ.Μ ${tenantTin}, ως εκμισθωτής`,
                                         size: 22,
                                         font: "Arial"
                                     })
@@ -728,7 +753,8 @@
                             new Paragraph({
                                 children: [
                                     new TextRun({
-                                        text: "1. ΜΙΣΘΙΟ. Ο πρώτος συμβαλλόμενος (\"εκμισθωτή\") έχει στην αποκλειστική κυριότητα, νομή και κατοχή του τους κάτωθι αγρούς:",
+                                        text: "1. ΣΤΟΙΧΕΙΑ ΜΙΣΘΩΣΗΣ:Ο Εκμισθωτής παραχωρεί στον μισθωτή τη χρήση και
+εκμετάλλευση του/των αγροτεμαχίου/ων με τα εξής στοιχεία:",
                                         size: 22,
                                         font: "Arial"
                                     })
@@ -743,9 +769,10 @@
                                             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Α/Α", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 5, type: WidthType.PERCENTAGE } }),
                                             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΚΟΙΝΟΤΗΤΑ", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
                                             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΤΟΠΟΘΕΣΙΑ", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 20, type: WidthType.PERCENTAGE } }),
-                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Α.Τ.Α.Κ.", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 20, type: WidthType.PERCENTAGE } }),
-                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΑΡ.ΚΤΗΜ.ΤΕΜ.", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
-                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΧΑΡΤΟΓΡΑΦΙΚΟ", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Α.Τ.Α.Κ.", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Κ.Α.Ε.Κ.", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΑΡ.ΚΤΗΜ.ΤΕΜ.", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 10, type: WidthType.PERCENTAGE } }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΧΑΡΤΟΓΡΑΦΙΚΟ", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 10, type: WidthType.PERCENTAGE } }),
                                             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΕΚΤΑΣΗ (Ha)", font: "Arial" })], alignment: AlignmentType.CENTER })], width: { size: 10, type: WidthType.PERCENTAGE } })
                                         ]
                                     }),
@@ -755,6 +782,7 @@
                                             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.community, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
                                             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.location, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
                                             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.atak, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.kaek, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
                                             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.other_cartographic_background, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
                                             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.cartographic_background, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
                                             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.area_ha.toString(), font: "Arial" })], alignment: AlignmentType.CENTER })] })
@@ -765,7 +793,8 @@
                             new Paragraph({
                                 children: [
                                     new TextRun({
-                                        text: "Ο εκμισθωτής εκμισθώνει με το παρόν συμφωνητικό στο μισθωτή τους παραπάνω αγρούς, με τους εξής όρους και συμφωνίες που είναι όλοι ουσιώδεις:",
+                                        text: `2. ΔΙΑΡΚΕΙΑ ΜΙΣΘΩΣΗΣ: Η μίσθωση αρχίζει από ${rentalStartDate} και λήγει
+την ${rentalEndDate}σύμφωνα με το άρθρο 620 ΑΚ, με δυνατότητα παράτασης κατόπιν συμφωνίας.`,
                                         size: 22,
                                         font: "Arial"
                                     })
@@ -775,7 +804,15 @@
                             new Paragraph({
                                 children: [
                                     new TextRun({
-                                        text: `2. ΧΡΟΝΟΣ ΜΙΣΘΩΣΗΣ. Η διάρκεια της μίσθωσης ορίζεται από ${rentalStartDate} μέχρι ${rentalEndDate}.`,
+                                        text: "3. ΜΙΣΘΩΜΑ: Το μίσθωμα είναι ποσοστιαίο % και ορίζεται όπως δηλώνεται ως δαπάνη στο
+Έντυπο Ε3 του μισθωτή . Το μίσθωμα για τον εκμισθωτή δεν μπορεί να είναι μικρότερο από
+τα τεκμαρτά εισοδήματα, όπως ορίζονται στο άρθρο 40 του Ν. 4172/2013 (ΦΕΚ) και
+δηλώνεται στο Έντυπο Ε2 της ΑΑΔΕ. Σε περίπτωση δωρεάν παραχώρησης (χρησιδανείου),
+π.χ. από γονέα σε τέκνο, σύζυγο σε σύζυγο ή αμοιβαία ανταλλαγή χρήσης, η παραχώρηση
+γίνεται δωρεάν ως χρησιδάνειο (άρθρο 810 ΑΚ), χωρίς χρηματικό ή άλλο αντάλλαγμα, και
+δεν υπολογίζεται τεκμαρτό εισόδημα, εφόσον το αγροτεμάχιο χρησιμοποιείται για αγροτική
+δραστηριότητα (άρθρο 39 παρ. 4 Ν. 4172/2013). Αλλιώς, το τεκμαρτό εισόδημα είναι 3% της
+αντικειμενικής αξίας.",
                                         size: 22,
                                         font: "Arial"
                                     })
@@ -785,7 +822,14 @@
                             new Paragraph({
                                 children: [
                                     new TextRun({
-                                        text: "3. ΜΙΣΘΩΜΑ. Το μίσθωμα ορίζεται σε 0 ευρώ, καθόσον πρόκειται για δωρεάν παραχώρηση χρήσης, όπως προβλέπεται από το άρθρο 10 παρ. 3 του Ν. 4067/2012.",
+                                        text: "4. ΣΚΟΠΟΣ ΜΙΣΘΩΣΗΣ:Η μίσθωση συνάπτεται με σκοπό την καλλιέργεια του/των
+αγροτεμαχίου/ων από τον μισθωτή για την εκτέλεση γεωργικών δραστηριοτήτων, σύμφωνα
+με την ισχύουσα νομοθεσία. Επιπλέον, η μίσθωση παρέχει τη δυνατότητα στον μισθωτή να
+υποβάλει Ενιαία Αίτηση Ενίσχυσης (ΕΑΕ) μέσω του ΟΠΕΚΕΠΕ, για την ενεργοποίηση
+δικαιωμάτων βασικής ενίσχυσης και συναφών ενισχύσεων της Κοινής Αγροτικής Πολιτικής
+(ΚΑΠ) 2023-2027, σύμφωνα με τον Καν. ΕΕ 1307/2013 και τον Ν. 4684/2020. Υπεκμίσθωση
+του αγροτεμαχίου επιτρέπεται μόνο με προηγούμενη έγγραφη συναίνεση του εκμισθωτή,
+σύμφωνα με το άρθρο 624 ΑΚ.",
                                         size: 22,
                                         font: "Arial"
                                     })
@@ -795,7 +839,9 @@
                             new Paragraph({
                                 children: [
                                     new TextRun({
-                                        text: "4. ΣΚΟΠΟΣ ΜΙΣΘΩΣΗΣ. Η εκμίσθωση γίνεται για την καλλιέργεια των παραπάνω αγρών, αποκλειστικά από το μισθωτή, με σκοπό την εκτέλεση των γεωργικών του δραστηριοτήτων, όπως προβλέπονται από την κείμενη νομοθεσία.",
+                                        text: "5. ΥΠΟΧΡΕΩΣΕΙΣ ΜΙΣΘΩΤΗ - ΚΑΛΗ ΧΡΗΣΗ ΤΟΥ ΜΙΣΘΙΟΥ:Ο Μισθωτής υποχρεούται να
+χρησιμοποιεί το μίσθιο με επιμέλεια, σύμφωνα με τον προορισμό του, και να το διατηρεί σε
+κατάσταση κατάλληλη για τη συμφωνημένη χρήση.",
                                         size: 22,
                                         font: "Arial"
                                     })
@@ -805,17 +851,9 @@
                             new Paragraph({
                                 children: [
                                     new TextRun({
-                                        text: "5. ΚΑΛΗ ΧΡΗΣΗ ΤΟΥ ΜΙΣΘΙΟΥ. Ο μισθωτή υποχρεούται να κάνει καλή χρήση του μισθίου, να το εκμεταλλεύεται με επιμέλεια και σύμφωνα με τον προορισμό του και να το διατηρεί κατάλληλο για τη συμφωνημένη χρήση, κάνοντας με αποκλειστική δαπάνη και επιμέλειά του κάθε είδους τακτικές ή έκτακτες επισκευές ή βελτιώσεις, διαφορετικά, ευθύνεται για αποζημίωση για τις φθορές και τις βλάβες που προξενήθηκαν σ' αυτό.",
-                                        size: 22,
-                                        font: "Arial"
-                                    })
-                                ],
-                                alignment: AlignmentType.JUSTIFIED
-                            }),
-                            new Paragraph({
-                                children: [
-                                    new TextRun({
-                                        text: "Το παρόν μισθωτήριο διαβάστηκε και έγινε αποδεκτό από τούς συμβαλλομένους, υπογράφη από αυτούς και ο καθένας έλαβε από ένα όμοιο αντίτυπο.",
+                                        text: "6. ΤΕΛΙΚΕΣ ΔΙΑΤΑΞΕΙΣ: Το παρόν συμφωνητικό διαβάστηκε και έγινε αμοιβαία αποδεκτό
+από τους συμβαλλόμενους. Κάθε συμβαλλόμενος έλαβε ένα (1) όμοιο αντίτυπο, το οποίο
+έχει πλήρη νομική ισχύ.",
                                         size: 22,
                                         font: "Arial"
                                     })
@@ -871,8 +909,8 @@
                                                         children: [
                                                             new TextRun({
                                                                 text: `ΘΕΩΡΗΘΗΚΕ ΤΟ ΓΝΗΣΙΟ ΤΗΣ ΥΠΟΓΡΑΦΗΣ
-                                                                ΕΚΜΙΣΘΩΤΗΣ ${agreement.owner.full_name}\n
-                                                                με Α.Δ.Τ.:________________`,
+                                                            ΕΚΜΙΣΘΩΤΗΣ ${agreement.owner.full_name}\n
+                                                            με Α.Δ.Τ.:________________`,
                                                                 size: 20,
                                                                 font: "Arial"
                                                             })
@@ -888,8 +926,8 @@
                                                         children: [
                                                             new TextRun({
                                                                 text: `ΘΕΩΡΗΘΗΚΕ ΤΟ ΓΝΗΣΙΟ ΤΗΣ ΥΠΟΓΡΑΦΗΣ
-                                                                ΜΙΣΘΩΤΗΣ ${tenant.first_name || 'Unknown'} ${tenant.last_name || 'Tenant'} ${tenant.father_name ? 'του ' + tenant.father_name : ''}\n 
-                                                                με Α.Δ.Τ.:${tenant.identity_number || '-'}`,
+                                                            ΜΙΣΘΩΤΗΣ ${tenant.first_name || 'Unknown'} ${tenant.last_name || 'Tenant'} ${tenant.father_name ? 'του ' + tenant.father_name : ''}\n 
+                                                            με Α.Δ.Τ.:${tenant.identity_number || '-'}`,
                                                                 size: 20,
                                                                 font: "Arial"
                                                             })
@@ -991,10 +1029,20 @@
                                     })
                                 ],
                                 alignment: AlignmentType.JUSTIFIED
-                            })
+                            }),
+                            new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: `ΥΠΟΣΗΜΕΙΩΣΗ: Το ποσό του μισθώματος δύναται να αναζητηθεί στο Έντυπο Ε3 του μισθωτή, όπως
+υποβάλλεται στην Ανεξάρτητη Αρχή Δημοσίων Εσόδων (ΑΑΔΕ).`,
+                                    size: 20,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED
+                        })
                         ];
 
-                        // Add page break after each agreement except the last
                         if (index < allAgreementsData.length - 1) {
                             agreementContent.push(new Paragraph({
                                 children: [new TextRun({ text: "", break: 1 })],
@@ -1031,7 +1079,7 @@
             zip.generateAsync({ type: 'blob' }).then(content => {
                 saveAs(content, `All_Agreements_${new Date().toISOString().slice(0, 10)}.zip`);
                 console.log('All agreements downloaded as ZIP.');
-                agreementBlobs = []; // Clear blobs after download
+                agreementBlobs = [];
                 downloadAllBtn.style.display = 'none';
                 downloadSingleBtn.style.display = 'none';
                 agreementCounter.textContent = 'Agreements: 0';
