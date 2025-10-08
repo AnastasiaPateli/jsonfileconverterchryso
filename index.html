@@ -320,6 +320,893 @@
                 throw new Error('Required libraries (docx.js or FileSaver.js) are not loaded.');
             }
 
+            const { Document, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, Footer } = docx;
+
+            const rentalStartDate = formatGreekDate(agreement.rental_start_date);
+            const rentalEndDate = formatGreekDate(agreement.rental_end_date);
+
+            if (rentalStartDate === '-' || rentalEndDate === '-') {
+                throw new Error('Invalid rental start or end date in agreement data.');
+            }
+
+            const doc = new Document({
+                sections: [{
+                    footers: {
+                        default: new Footer({
+                            children: [
+                                new Paragraph({
+                                    children: [
+                                        new TextRun({
+                                            text: `ΥΠΟΣΗΜΕΙΩΣΗ: Το ποσό του μισθώματος δύναται να αναζητηθεί στο Έντυπο Ε3 του μισθωτή, όπως υποβάλλεται στην Ανεξάρτητη Αρχή Δημοσίων Εσόδων (ΑΑΔΕ).`,
+                                            size: 18, // 9 points
+                                            font: "Arial"
+                                        })
+                                    ],
+                                    alignment: AlignmentType.JUSTIFIED,
+                                    spacing: { after: 100 }
+                                })
+                            ]
+                        })
+                    },
+                    children: [
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "ΙΔΙΩΤΙΚΟ ΣΥΜΦΩΝΗΤΙΚΟ ΑΓΡΟΜΙΣΘΩΣΗΣ",
+                                    bold: true,
+                                    size: 28,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.CENTER,
+                            spacing: { after: 200 }
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: `Σήμερα την ${rentalStartDate} στο Χρυσό οι υπογράφοντες το συμφωνητικό αυτό:`,
+                                    size: 20,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED,
+                            spacing: { after: 100 }
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: `1. ο/η ${agreement.owner.full_name}, με Α.Φ.Μ ${agreement.owner.tin}, ως εκμισθωτής και`,
+                                    size: 20,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED,
+                            spacing: { after: 100 }
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: `2. ο/η ${tenant.first_name || 'Unknown'} ${tenant.last_name || 'Tenant'} ${tenant.father_name ? 'του ' + tenant.father_name : ''}, με Α.Φ.Μ ${tenantTin}, ως μισθωτής`,
+                                    size: 20,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED,
+                            spacing: { after: 100 }
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "συμφώνησαν από κοινού και αποδέχτηκαν τα εξής:",
+                                    size: 22,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED,
+                            spacing: { after: 200 }
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "1. ΣΤΟΙΧΕΙΑ ΜΙΣΘΩΣΗΣ: Ο εκμισθωτής παραχωρεί στον μισθωτή τη χρήση και εκμετάλλευση του/των αγροτεμαχίου/ων με τα εξής στοιχεία:",
+                                    size: 20,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED,
+                            spacing: { after: 100 }
+                        }),
+                        new Table({
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                            rows: [
+                                new TableRow({
+                                    children: [
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Α/Α", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 5, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΚΟΙΝΟΤΗΤΑ", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΤΟΠΟΘΕΣΙΑ", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 20, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Α.Τ.Α.Κ.", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Κ.Α.Ε.Κ.", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΑΡ.ΚΤΗΜ.ΤΕΜ.", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 10, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΧΑΡΤΟΓΡΑΦΙΚΟ", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 10, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΕΚΤΑΣΗ (Ha)", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 10, type: WidthType.PERCENTAGE } })
+                                    ]
+                                }),
+                                ...agreement.fields.map((field, index) => new TableRow({
+                                    children: [
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: (index + 1).toString(), font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.community, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.location, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.atak, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.kaek, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.other_cartographic_background, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.cartographic_background, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.area_ha.toString(), font: "Arial" })], alignment: AlignmentType.CENTER })] })
+                                    ]
+                                }))
+                            ]
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: `2. ΔΙΑΡΚΕΙΑ ΜΙΣΘΩΣΗΣ: Η μίσθωση αρχίζει από ${rentalStartDate} και λήγει την ${rentalEndDate} σύμφωνα με το άρθρο 620 ΑΚ, με δυνατότητα παράτασης κατόπιν συμφωνίας.`,
+                                    size: 20,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED,
+                            spacing: { before: 200, after: 100 }
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "3. ΜΙΣΘΩΜΑ: Το μίσθωμα είναι ποσοστιαίο % και ορίζεται όπως δηλώνεται ως δαπάνη στο Έντυπο Ε3 του μισθωτή. Το μίσθωμα για τον εκμισθωτή δεν μπορεί να είναι μικρότερο από τα τεκμαρτά εισοδήματα, όπως ορίζονται στο άρθρο 40 του Ν. 4172/2013 (ΦΕΚ) και δηλώνεται στο Έντυπο Ε2 της ΑΑΔΕ. Σε περίπτωση δωρεάν παραχώρησης (χρησιδανείου), π.χ. από γονέα σε τέκνο, σύζυγο σε σύζυγο ή αμοιβαία ανταλλαγή χρήσης, η παραχώρηση γίνεται δωρεάν ως χρησιδάνειο (άρθρο 810 ΑΚ), χωρίς χρηματικό ή άλλο αντάλλαγμα, και δεν υπολογίζεται τεκμαρτό εισόδημα, εφόσον το αγροτεμάχιο χρησιμοποιείται για αγροτική δραστηριότητα (άρθρο 39 παρ. 4 Ν. 4172/2013). Αλλιώς, το τεκμαρτό εισόδημα είναι 3% της αντικειμενικής αξίας.",
+                                    size: 20,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED,
+                            spacing: { after: 100 }
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "4. ΣΚΟΠΟΣ ΜΙΣΘΩΣΗΣ: Η μίσθωση συνάπτεται με σκοπό την καλλιέργεια του/των αγροτεμαχίου/ων από τον μισθωτή για την εκτέλεση γεωργικών δραστηριοτήτων, σύμφωνα με την ισχύουσα νομοθεσία. Επιπλέον, η μίσθωση παρέχει τη δυνατότητα στον μισθωτή να υποβάλει Ενιαία Αίτηση Ενίσχυσης (ΕΑΕ) μέσω του ΟΠΕΚΕΠΕ, για την ενεργοποίηση δικαιωμάτων βασικής ενίσχυσης και συναφών ενισχύσεων της Κοινής Αγροτικής Πολιτικής (ΚΑΠ) 2023-2027, σύμφωνα με τον Καν. ΕΕ 1307/2013 και τον Ν. 4684/2020. Υπεκμίσθωση του αγροτεμαχίου επιτρέπεται μόνο με προηγούμενη έγγραφη συναίνεση του εκμισθωτή, σύμφωνα με το άρθρο 624 ΑΚ.",
+                                    size: 20,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED,
+                            spacing: { after: 100 }
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "5. ΥΠΟΧΡΕΩΣΕΙΣ ΜΙΣΘΩΤΗ - ΚΑΛΗ ΧΡΗΣΗ ΤΟΥ ΜΙΣΘΙΟΥ: Ο μισθωτής υποχρεούται να χρησιμοποιεί το μίσθιο με επιμέλεια, σύμφωνα με τον προορισμό του, και να το διατηρεί σε κατάσταση κατάλληλη για τη συμφωνημένη χρήση.",
+                                    size: 20,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED,
+                            spacing: { after: 100 }
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "6. ΤΕΛΙΚΕΣ ΔΙΑΤΑΞΕΙΣ: Το παρόν συμφωνητικό διαβάστηκε και έγινε αμοιβαία αποδεκτό από τους συμβαλλόμενους. Κάθε συμβαλλόμενος έλαβε ένα (1) όμοιο αντίτυπο, το οποίο έχει πλήρη νομική ισχύ.",
+                                    size: 20,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED,
+                            spacing: { after: 200 }
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "ΟΙ ΣΥΜΒΑΛΛΟΜΕΝΟΙ",
+                                    bold: true,
+                                    size: 20,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.CENTER,
+                            spacing: { before: 200, after: 100 }
+                        }),
+                        new Table({
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                            borders: {
+                                top: { style: BorderStyle.NONE, size: 0 },
+                                bottom: { style: BorderStyle.NONE, size: 0 },
+                                left: { style: BorderStyle.NONE, size: 0 },
+                                right: { style: BorderStyle.NONE, size: 0 }
+                            },
+                            rows: [
+                                new TableRow({
+                                    children: [
+                                        new TableCell({
+                                            width: { size: 50, type: WidthType.PERCENTAGE },
+                                            children: [
+                                                new Paragraph({
+                                                    children: [
+                                                        new TextRun({
+                                                            text: `ΘΕΩΡΗΘΗΚΕ ΤΟ ΓΝΗΣΙΟ ΤΗΣ ΥΠΟΓΡΑΦΗΣ\nΕΚΜΙΣΘΩΤΗΣ ${agreement.owner.full_name}\nμε Α.Δ.Τ.: ________________`,
+                                                            size: 20,
+                                                            font: "Arial"
+                                                        })
+                                                    ],
+                                                    alignment: AlignmentType.CENTER
+                                                })
+                                            ]
+                                        }),
+                                        new TableCell({
+                                            width: { size: 50, type: WidthType.PERCENTAGE },
+                                            children: [
+                                                new Paragraph({
+                                                    children: [
+                                                        new TextRun({
+                                                            text: `ΘΕΩΡΗΘΗΚΕ ΤΟ ΓΝΗΣΙΟ ΤΗΣ ΥΠΟΓΡΑΦΗΣ\nΜΙΣΘΩΤΗΣ ${tenant.first_name || 'Unknown'} ${tenant.last_name || 'Tenant'} ${tenant.father_name ? 'του ' + tenant.father_name : ''}\nμε Α.Δ.Τ.: ${tenant.identity_number || '-'}`,
+                                                            size: 20,
+                                                            font: "Arial"
+                                                        })
+                                                    ],
+                                                    alignment: AlignmentType.CENTER
+                                                })
+                                            ]
+                                        })
+                                    ]
+                                })
+                            ]
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: "Για το γνήσιο των υπογραφών",
+                                    size: 20,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED,
+                            spacing: { before: 200, after: 100 }
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: `ΗΜΕΡΟΜΗΝΙΑ: ${rentalStartDate}`,
+                                    size: 20,
+                                    font: "Arial"
+                                })
+                            ],
+                            alignment: AlignmentType.JUSTIFIED,
+                            spacing: { after: 100 }
+                        })
+                    ]
+                }]
+            });
+
+            return docx.Packer.toBlob(doc).then(blob => {
+                const filename = `Agreement_${agreement.owner.tin}_${agreement.owner.full_name}_${agreement.rental_start_date || 'no_date'}.docx`;
+                if (storeBlob) {
+                    agreementBlobs.push({ blob, filename });
+                } else {
+                    saveAs(blob, filename);
+                }
+                console.log('Document generated successfully:', filename);
+            }).catch(error => {
+                console.error('Document Generation Error:', error);
+                throw error;
+            });
+        }
+
+        function generateSingleDocx() {
+            if (!window.docx || !window.saveAs) {
+                errorDiv.textContent = 'Required libraries (docx.js or FileSaver.js) are not loaded.';
+                console.error('Required libraries not loaded');
+                return;
+            }
+
+            const { Document, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, Footer } = docx;
+
+            const doc = new Document({
+                sections: [{
+                    footers: {
+                        default: new Footer({
+                            children: [
+                                new Paragraph({
+                                    children: [
+                                        new TextRun({
+                                            text: `ΥΠΟΣΗΜΕΙΩΣΗ: Το ποσό του μισθώματος δύναται να αναζητηθεί στο Έντυπο Ε3 του μισθωτή, όπως υποβάλλεται στην Ανεξάρτητη Αρχή Δημοσίων Εσόδων (ΑΑΔΕ).`,
+                                            size: 18, // 9 points
+                                            font: "Arial"
+                                        })
+                                    ],
+                                    alignment: AlignmentType.JUSTIFIED,
+                                    spacing: { after: 100 }
+                                })
+                            ]
+                        })
+                    },
+                    children: allAgreementsData.flatMap((data, index) => {
+                        const { agreement, tenant, tenantTin } = data;
+
+                        const rentalStartDate = formatGreekDate(agreement.rental_start_date);
+                        const rentalEndDate = formatGreekDate(agreement.rental_end_date);
+
+                        if (rentalStartDate === '-' || rentalEndDate === '-') {
+                            console.error('Invalid date in agreement:', agreement);
+                            return [];
+                        }
+
+                        const agreementContent = [
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: `ΙΔΙΩΤΙΚΟ ΣΥΜΦΩΝΗΤΙΚΟ ΑΓΡΟΜΙΣΘΩΣΗΣ ${index + 1}`,
+                                        bold: true,
+                                        size: 28,
+                                        font: "Arial"
+                                    })
+                                ],
+                                alignment: AlignmentType.CENTER,
+                                spacing: { after: 200 }
+                            }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: `Σήμερα την ${rentalStartDate} στο Χρυσό οι υπογράφοντες το συμφωνητικό αυτό:`,
+                                        size: 20,
+                                        font: "Arial"
+                                    })
+                                ],
+                                alignment: AlignmentType.JUSTIFIED,
+                                spacing: { after: 100 }
+                            }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: `1. ο/η ${agreement.owner.full_name}, με Α.Φ.Μ ${agreement.owner.tin}, Δ.Ο.Υ. ${agreement.owner.doy}, ως εκμισθωτής και`,
+                                        size: 20,
+                                        font: "Arial"
+                                    })
+                                ],
+                                alignment: AlignmentType.JUSTIFIED,
+                                spacing: { after: 100 }
+                            }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: `2. ο/η ${tenant.first_name || 'Unknown'} ${tenant.last_name || 'Tenant'} ${tenant.father_name ? 'του ' + tenant.father_name : ''}, με Α.Φ.Μ ${tenantTin}, ως μισθωτής`,
+                                        size: 20,
+                                        font: "Arial"
+                                    })
+                                ],
+                                alignment: AlignmentType.JUSTIFIED,
+                                spacing: { after: 100 }
+                            }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: "συμφώνησαν από κοινού και αποδέχτηκαν τα εξής:",
+                                        size: 20,
+                                        font: "Arial"
+                                    })
+                                ],
+                                alignment: AlignmentType.JUSTIFIED,
+                                spacing: { after: 200 }
+                            }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: "1. ΣΤΟΙΧΕΙΑ ΜΙΣΘΩΣΗΣ: Ο εκμισθωτής παραχωρεί στον μισθωτή τη χρήση και εκμετάλλευση του/των αγροτεμαχίου/ων με τα εξής στοιχεία:",
+                                        size: 20,
+                                        font: "Arial",
+                                        bold: true
+                                    })
+                                ],
+                                alignment: AlignmentType.JUSTIFIED,
+                                spacing: { after: 100 }
+                            }),
+                            new Table({
+                                width: { size: 100, type: WidthType.PERCENTAGE },
+                                rows: [
+                                    new TableRow({
+                                        children: [
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Α/Α", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 5, type: WidthType.PERCENTAGE } }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΚΟΙΝΟΤΗΤΑ", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΤΟΠΟΘΕΣΙΑ", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 20, type: WidthType.PERCENTAGE } }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Α.Τ.Α.Κ.", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Κ.Α.Ε.Κ.", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΑΡ.ΚΤΗΜ.ΤΕΜ.", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 10, type: WidthType.PERCENTAGE } }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΧΑΡΤΟΓΡΑΦΙΚΟ", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 10, type: WidthType.PERCENTAGE } }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ΕΚΤΑΣΗ (Ha)", font: "Arial", bold: true })], alignment: AlignmentType.CENTER })], width: { size: 10, type: WidthType.PERCENTAGE } })
+                                        ]
+                                    }),
+                                    ...agreement.fields.map((field, index) => new TableRow({
+                                        children: [
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: (index + 1).toString(), font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.community, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.location, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.atak, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.kaek, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.other_cartographic_background, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.cartographic_background, font: "Arial" })], alignment: AlignmentType.CENTER })] }),
+                                            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: field.area_ha.toString(), font: "Arial" })], alignment: AlignmentType.CENTER })] })
+                                        ]
+                                    }))
+                                ]
+                            }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: `2. ΔΙΑΡΚΕΙΑ ΜΙΣΘΩΣΗΣ: Η μίσθωση αρχίζει από ${rentalStartDate} και λήγει την ${rentalEndDate} σύμφωνα με το άρθρο 620 ΑΚ, με δυνατότητα παράτασης κατόπιν συμφωνίας.`,
+                                        size: 20,
+                                        font: "Arial",
+                                        bold: true
+                                    })
+                                ],
+                                alignment: AlignmentType.JUSTIFIED,
+                                spacing: { before: 200, after: 100 }
+                            }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: "3. ΜΙΣΘΩΜΑ: Το μίσθωμα είναι ποσοστιαίο % και ορίζεται όπως δηλώνεται ως δαπάνη στο Έντυπο Ε3 του μισθωτή. Το μίσθωμα για τον εκμισθωτή δεν μπορεί να είναι μικρότερο από τα τεκμαρτά εισοδήματα, όπως ορίζονται στο άρθρο 40 του Ν. 4172/2013 (ΦΕΚ) και δηλώνεται στο Έντυπο Ε2 της ΑΑΔΕ. Σε περίπτωση δωρεάν παραχώρησης (χρησιδανείου), π.χ. από γονέα σε τέκνο, σύζυγο σε σύζυγο ή αμοιβαία ανταλλαγή χρήσης, η παραχώρηση γίνεται δωρεάν ως χρησιδάνειο (άρθρο 810 ΑΚ), χωρίς χρηματικό ή άλλο αντάλλαγμα, και δεν υπολογίζεται τεκμαρτό εισόδημα, εφόσον το αγροτεμάχιο χρησιμοποιείται για αγροτική δραστηριότητα (άρθρο 39 παρ. 4 Ν. 4172/2013). Αλλιώς, το τεκμαρτό εισόδημα είναι 3% της αντικειμενικής αξίας.",
+                                        size: 20,
+                                        font: "Arial"
+                                    })
+                                ],
+                                alignment: AlignmentType.JUSTIFIED,
+                                spacing: { after: 100 }
+                            }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: "4. ΣΚΟΠΟΣ ΜΙΣΘΩΣΗΣ: Η μίσθωση συνάπτεται με σκοπό την καλλιέργεια του/των αγροτεμαχίου/ων από τον μισθωτή για την εκτέλεση γεωργικών δραστηριοτήτων, σύμφωνα με την ισχύουσα νομοθεσία. Επιπλέον, η μίσθωση παρέχει τη δυνατότητα στον μισθωτή να υποβάλει Ενιαία Αίτηση Ενίσχυσης (ΕΑΕ) μέσω του ΟΠΕΚΕΠΕ, για την ενεργοποίηση δικαιωμάτων βασικής ενίσχυσης και συναφών ενισχύσεων της Κοινής Αγροτικής Πολιτικής (ΚΑΠ) 2023-2027, σύμφωνα με τον Καν. ΕΕ 1307/2013 και τον Ν. 4684/2020. Υπεκμίσθωση του αγροτεμαχίου επιτρέπεται μόνο με προηγούμενη έγγραφη συναίνεση του εκμισθωτή, σύμφωνα με το άρθρο 624 ΑΚ.",
+                                        size: 20,
+                                        font: "Arial"
+                                    })
+                                ],
+                                alignment: AlignmentType.JUSTIFIED,
+                                spacing: { after: 100 }
+                            }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: "5. ΥΠΟΧΡΕΩΣΕΙΣ ΜΙΣΘΩΤΗ - ΚΑΛΗ ΧΡΗΣΗ ΤΟΥ ΜΙΣΘΙΟΥ: Ο μισθωτής υποχρεούται να χρησιμοποιεί το μίσθιο με επιμέλεια, σύμφωνα με τον προορισμό του, και να το διατηρεί σε κατάσταση κατάλληλη για τη συμφωνημένη χρήση.",
+                                        size: 22,
+                                        font: "Arial"
+                                    })
+                                ],
+                                alignment: AlignmentType.JUSTIFIED,
+                                spacing: { after: 100 }
+                            }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: "6. ΤΕΛΙΚΕΣ ΔΙΑΤΑΞΕΙΣ: Το παρόν συμφωνητικό διαβάστηκε και έγινε αμοιβαία αποδεκτό από τους συμβαλλόμενους. Κάθε συμβαλλόμενος έλαβε ένα (1) όμοιο αντίτυπο, το οποίο έχει πλήρη νομική ισχύ.",
+                                        size: 20,
+                                        font: "Arial"
+                                    })
+                                ],
+                                alignment: AlignmentType.JUSTIFIED,
+                                spacing: { after: 200 }
+                            }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: "ΟΙ ΣΥΜΒΑΛΛΟΜΕΝΟΙ",
+                                        bold: true,
+                                        size: 20,
+                                        font: "Arial"
+                                    })
+                                ],
+                                alignment: AlignmentType.CENTER,
+                                spacing: { before: 200, after: 100 }
+                            }),
+                            new Table({
+                                width: { size: 100, type: WidthType.PERCENTAGE },
+                                borders: {
+                                    top: { style: BorderStyle.NONE, size: 0 },
+                                    bottom: { style: BorderStyle.NONE, size: 0 },
+                                    left: { style: BorderStyle.NONE, size: 0 },
+                                    right: { style: BorderStyle.NONE, size: 0 }
+                                },
+                                rows: [
+                                    new TableRow({
+                                        children: [
+                                            new TableCell({
+                                                width: { size: 50, type: WidthType.PERCENTAGE },
+                                                children: [
+                                                    new Paragraph({
+                                                        children: [
+                                                            new TextRun({
+                                                                text: `ΘΕΩΡΗΘΗΚΕ ΤΟ ΓΝΗΣΙΟ ΤΗΣ ΥΠΟΓΡΑΦΗΣ\nΕΚΜΙΣΘΩΤΗΣ ${agreement.owner.full_name}\nμε Α.Δ.Τ.: ________________`,
+                                                                size: 20,
+                                                                font: "Arial"
+                                                            })
+                                                        ],
+                                                        alignment: AlignmentType.CENTER
+                                                    })
+                                                ]
+                                            }),
+                                            new TableCell({
+                                                width: { size: 50, type: WidthType.PERCENTAGE },
+                                                children: [
+                                                    new Paragraph({
+                                                        children: [
+                                                            new TextRun({
+                                                                text: `ΘΕΩΡΗΘΗΚΕ ΤΟ ΓΝΗΣΙΟ ΤΗΣ ΥΠΟΓΡΑΦΗΣ\nΜΙΣΘΩΤΗΣ ${tenant.first_name || 'Unknown'} ${tenant.last_name || 'Tenant'} ${tenant.father_name ? 'του ' + tenant.father_name : ''}\nμε Α.Δ.Τ.: ${tenant.identity_number || '-'}`,
+                                                                size: 20,
+                                                                font: "Arial"
+                                                            })
+                                                        ],
+                                                        alignment: AlignmentType.CENTER
+                                                    })
+                                                ]
+                                            })
+                                        ]
+                                    })
+                                ]
+                            }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: "Για το γνήσιο των υπογραφών",
+                                        size: 20,
+                                        font: "Arial"
+                                    })
+                                ],
+                                alignment: AlignmentType.JUSTIFIED,
+                                spacing: { before: 200, after: 100 }
+                            }),
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: `ΗΜΕΡΟΜΗΝΙΑ: ${rentalStartDate}`,
+                                        size: 20,
+                                        font: "Arial"
+                                    })
+                                ],
+                                alignment: AlignmentType.JUSTIFIED,
+                                spacing: { after: 100 }
+                            })
+                        ];
+
+                        if (index < allAgreementsData.length - 1) {
+                            agreementContent.push(new Paragraph({
+                                children: [new TextRun({ text: "", break: 1 })],
+                                pageBreakBefore: true
+                            }));
+                        }
+
+                        return agreementContent;
+                    })
+                }]
+            });
+
+            docx.Packer.toBlob(doc).then(blob => {
+                saveAs(blob, `All_Agreements_Single_${new Date().toISOString().slice(0, 10)}.docx`);
+                console.log('Single document generated successfully');
+            }).catch(error => {
+                errorDiv.textContent = 'Error generating single document: ' + error.message;
+                console.error('Single Document Generation Error:', error);
+            });
+        }
+
+        function downloadAllAgreements() {
+            if (!window.JSZip || agreementBlobs.length === 0) {
+                errorDiv.textContent = 'Unable to download all agreements. JSZip not loaded or no agreements generated.';
+                console.error('Download All Failure:', { JSZip: !!window.JSZip, agreementBlobsLength: agreementBlobs.length });
+                return;
+            }
+
+            const zip = new JSZip();
+            agreementBlobs.forEach((item) => {
+                zip.file(item.filename, item.blob);
+            });
+
+            zip.generateAsync({ type: 'blob' }).then(content => {
+                saveAs(content, `All_Agreements_${new Date().toISOString().slice(0, 10)}.zip`);
+                console.log('All agreements downloaded as ZIP.');
+                agreementBlobs = [];
+                downloadAllBtn.style.display = 'none';
+                downloadSingleBtn.style.display = 'none';
+                agreementCounter.textContent = 'Agreements: 0';
+            }).catch(error => {
+                errorDiv.textContent = 'Error creating ZIP file: ' + error.message;
+                console.error('ZIP Generation Error:', error);
+            });
+        }
+
+        downloadAllBtn.addEventListener('click', downloadAllAgreements);
+        downloadSingleBtn.addEventListener('click', generateSingleDocx);
+    </script>
+</body>
+</html>            margin: 10px 0;
+            cursor: pointer;
+        }
+        .agreement {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        .download-btn, .download-all-btn, .download-single-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 4px 2px;
+            cursor: pointer;
+        }
+        .error {
+            color: red;
+            margin: 10px 0;
+        }
+        .download-all-section {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .agreement-counter {
+            margin-left: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="download-all-section">
+        <button class="download-all-btn" id="downloadAllBtn" style="display: none;">Download All Agreements</button>
+        <button class="download-single-btn" id="downloadSingleBtn" style="display: none;">Download Single Document</button>
+        <span class="agreement-counter" id="agreementCounter">Agreements: 0</span>
+    </div>
+    <div class="upload-section">
+        <h2>Tenancy Agreement Generator</h2>
+        <input type="file" id="jsonFile" accept=".json">
+        <div id="error" class="error"></div>
+    </div>
+    <div class="agreements-section" id="agreements"></div>
+
+    <script>
+        const jsonFileInput = document.getElementById('jsonFile');
+        const agreementsDiv = document.getElementById('agreements');
+        const errorDiv = document.getElementById('error');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        const downloadSingleBtn = document.getElementById('downloadSingleBtn');
+        const agreementCounter = document.getElementById('agreementCounter');
+        let agreementBlobs = [];
+        let allAgreementsData = [];
+
+        // Check if required libraries are loaded
+        window.addEventListener('load', () => {
+            if (!window.docx || !window.saveAs || !window.JSZip) {
+                errorDiv.textContent = 'Required libraries (docx.js, FileSaver.js, or JSZip) failed to load. Please try again later.';
+                console.error('Library Load Failure:', { docx: !!window.docx, saveAs: !!window.saveAs, JSZip: !!window.JSZip });
+            }
+        });
+
+        jsonFileInput.addEventListener('change', handleFileUpload);
+
+        function validateJsonStructure(data) {
+            if (!data.tin) return 'Missing tenant TIN in JSON data.';
+            if (!data.applicant_detail || typeof data.applicant_detail !== 'object') return 'Invalid or missing applicant_detail in JSON data.';
+            if (!Array.isArray(data.field_list)) return 'Invalid or missing field_list in JSON data.';
+            return null;
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                errorDiv.textContent = 'No file selected.';
+                console.warn('No file selected');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    const validationError = validateJsonStructure(data);
+                    if (validationError) {
+                        errorDiv.textContent = validationError;
+                        console.warn(validationError);
+                        return;
+                    }
+                    console.log('Tenant TIN:', data.tin);
+                    generateAgreements(data, data.tin);
+                    errorDiv.textContent = '';
+                } catch (error) {
+                    errorDiv.textContent = 'Error parsing JSON file: ' + error.message;
+                    console.error('JSON Parse Error:', error);
+                }
+            };
+            reader.onerror = function() {
+                errorDiv.textContent = 'Error reading file.';
+                console.error('FileReader Error:', reader.error);
+            };
+            reader.readAsText(file);
+        }
+
+        function getKaek(propertyList) {
+            if (!propertyList || !Array.isArray(propertyList) || propertyList.length === 0) {
+                console.warn('Invalid or empty field_property_list:', propertyList);
+                return '-';
+            }
+            for (const property of propertyList) {
+                if (property.kaek !== undefined && property.kaek !== null && property.kaek !== '') {
+                    return property.kaek;
+                }
+            }
+            console.warn('No valid kaek found in field_property_list:', propertyList);
+            return '-';
+        }
+
+        function generateAgreements(data, tenantTin) {
+            agreementsDiv.innerHTML = '';
+            agreementBlobs = [];
+            allAgreementsData = [];
+            const tenant = data.applicant_detail || {};
+            const fields = Array.isArray(data.field_list) ? data.field_list : [];
+
+            if (!fields.length) {
+                errorDiv.textContent = 'No fields found in the JSON data.';
+                console.warn('No fields in JSON:', data.field_list);
+                return;
+            }
+
+            console.log('Processing fields:', fields.length);
+            const agreementsByTinAndDates = {};
+
+            fields.forEach((field, fieldIndex) => {
+                const fieldInfo = field.field_info || {};
+                const propertyList = Array.isArray(field.field_property_list) ? field.field_property_list : [];
+                const geospatialData = field.field_geospatial_data || {};
+
+                if (!propertyList.length) {
+                    console.warn(`Field ${field.id || fieldIndex} has no field_property_list, skipping.`);
+                    return;
+                }
+
+                propertyList.forEach((property, propIndex) => {
+                    const tin = property.tin || 'unknown_tin_' + Math.random().toString(36).substr(2, 9);
+                    const fullName = property.full_name || 'Unknown Owner';
+                    if (tin.startsWith('unknown_tin_') || fullName === 'Unknown Owner') {
+                        console.warn(`Skipping property in field ${field.id || fieldIndex} due to unknown owner: TIN=${tin}, Name=${fullName}`);
+                        return;
+                    }
+                    if (tin === tenantTin) {
+                        console.warn(`Skipping property in field ${field.id || fieldIndex} for TIN ${tin} as it matches tenant TIN ${tenantTin}`);
+                        return;
+                    }
+                    const rentalKey = `${tin}_${property.rental_start_date || '-'}_${property.rental_end_date || '-'}`;
+                    if (!agreementsByTinAndDates[rentalKey]) {
+                        agreementsByTinAndDates[rentalKey] = {
+                            owner: {
+                                tin: property.tin || 'Unknown',
+                                full_name: fullName,
+                                doy: 'Α Σερρών'
+                            },
+                            rental_start_date: property.rental_start_date || '-',
+                            rental_end_date: property.rental_end_date || '-',
+                            fields: []
+                        };
+                    }
+                    agreementsByTinAndDates[rentalKey].fields.push({
+                        serial_number: geospatialData.serial_number || '-',
+                        community: geospatialData.community_code || 'Unknown',
+                        location: fieldInfo.location || 'Unknown',
+                        atak: property.atak || '-',
+                        kaek: getKaek([property]) || '-',
+                        other_cartographic_background: fieldInfo.other_cartographic_background || '-',
+                        cartographic_background: geospatialData.cartographic_background || '-',
+                        area_ha: property.area_participation_atak || '0',
+                        rental_start_date: property.rental_start_date || '-',
+                        rental_end_date: property.rental_end_date || '-',
+                        property_tin: property.tin
+                    });
+                    console.log(`Added field to agreement: TIN=${tin}, Field=${field.id || fieldIndex}, PropIndex=${propIndex}, KAEK=${getKaek([property])}`);
+                });
+            });
+
+            console.log('Generated agreements:', Object.keys(agreementsByTinAndDates).length, agreementsByTinAndDates);
+
+            if (Object.keys(agreementsByTinAndDates).length === 0) {
+                errorDiv.textContent = 'No valid agreements generated. All fields may belong to the tenant, have invalid owner data, or lack valid field_property_list.';
+                console.warn('No valid agreements generated');
+                downloadAllBtn.style.display = 'none';
+                downloadSingleBtn.style.display = 'none';
+                agreementCounter.textContent = 'Agreements: 0';
+                return;
+            }
+
+            const agreementCount = Object.keys(agreementsByTinAndDates).length;
+            agreementCounter.textContent = `Agreements: ${agreementCount}`;
+            downloadAllBtn.style.display = agreementCount > 1 ? 'block' : 'none';
+            downloadSingleBtn.style.display = agreementCount > 0 ? 'block' : 'none';
+
+            Object.values(agreementsByTinAndDates).forEach((agreement, index) => {
+                const agreementDiv = document.createElement('div');
+                agreementDiv.className = 'agreement';
+                
+                const title = document.createElement('h3');
+                title.textContent = `Agreement ${index + 1} for ${agreement.owner.full_name} (TIN: ${agreement.owner.tin}, ${agreement.rental_start_date} - ${agreement.rental_end_date})`;
+                agreementDiv.appendChild(title);
+
+                const table = document.createElement('table');
+                table.border = '1';
+                table.style.width = '100%';
+                table.innerHTML = `
+                    <tr>
+                        <th>Α/Α</th>
+                        <th>ΚΟΙΝΟΤΗΤΑ (κωδ.)</th>
+                        <th>ΤΟΠΟΘΕΣΙΑ</th>
+                        <th>Α.Τ.Α.Κ.</th>
+                        <th>Κ.Α.Ε.Κ.</th>
+                        <th>ΑΡ.ΚΤΗΜ.ΤΕΜ.</th>
+                        <th>ΧΑΡΤΟΓΡΑΦΙΚΟ</th>
+                        <th>ΕΚΤΑΣΗ (Ha)</th>
+                    </tr>
+                `;
+                agreement.fields.forEach((field, fieldIndex) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${fieldIndex + 1}</td>
+                        <td>${field.community}</td>
+                        <td>${field.location}</td>
+                        <td>${field.atak}</td>
+                        <td>${field.kaek}</td>
+                        <td>${field.other_cartographic_background}</td>
+                        <td>${field.cartographic_background}</td>
+                        <td>${field.area_ha}</td>
+                    `;
+                    table.appendChild(row);
+                });
+                agreementDiv.appendChild(table);
+
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'download-btn';
+                downloadBtn.textContent = 'Download Agreement';
+                downloadBtn.onclick = () => {
+                    try {
+                        generateDocx(agreement, tenant, tenantTin, false);
+                    } catch (error) {
+                        errorDiv.textContent = 'Error generating document: ' + error.message;
+                        console.error('Document Generation Error:', error);
+                    }
+                };
+                agreementDiv.appendChild(downloadBtn);
+
+                try {
+                    generateDocx(agreement, tenant, tenantTin, true);
+                } catch (error) {
+                    console.error('Error generating blob for agreement:', error);
+                    errorDiv.textContent = 'Error preparing agreement for download all: ' + error.message;
+                }
+
+                allAgreementsData.push({ agreement, tenant, tenantTin });
+
+                agreementsDiv.appendChild(agreementDiv);
+                console.log(`Rendered agreement ${index + 1} for ${agreement.owner.full_name}`);
+            });
+        }
+
+        function formatGreekDate(dateStr) {
+            if (!dateStr || dateStr === '-') return '-';
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) {
+                console.warn(`Invalid date: ${dateStr}`);
+                return '-';
+            }
+            return date.toLocaleDateString('el-GR', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
+
+        function generateDocx(agreement, tenant, tenantTin, storeBlob = false) {
+            if (!window.docx || !window.saveAs) {
+                throw new Error('Required libraries (docx.js or FileSaver.js) are not loaded.');
+            }
+
             const { Document, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle } = docx;
 
             const rentalStartDate = formatGreekDate(agreement.rental_start_date);
